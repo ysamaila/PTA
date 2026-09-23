@@ -13,6 +13,7 @@ import { MailService } from '../mail/mail.service.js';
 import { TokenService, TokenResponse } from './token.service.js';
 import { RegisterParentDto } from './dto/register-parent.dto.js';
 import { RegisterTeacherDto } from './dto/register-teacher.dto.js';
+import { RegisterAdminDto } from './dto/register-admin.dto.js';
 import { LoginDto } from './dto/login.dto.js';
 import { VerifyCodeDto } from './dto/verify-code.dto.js';
 import { ResendCodeDto } from './dto/resend-code.dto.js';
@@ -232,6 +233,60 @@ export class AuthService {
     };
   }
 
+  async registerAdmin(
+    dto: RegisterAdminDto,
+  ): Promise<{ message: string; user: SafeUser }> {
+    const normalizedEmail = dto.email.trim().toLowerCase();
+
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+
+    if (existingUser) {
+      throw new ConflictException('An account with this email already exists');
+    }
+
+    const passwordHash = await argon2.hash(dto.password, {
+      type: argon2.argon2id,
+      memoryCost: 65536,
+      timeCost: 3,
+      parallelism: 4,
+    });
+
+    const code = this.generateSixDigitCode();
+    const codeHash = this.tokenService.hashToken(code);
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    const user = await this.prisma.$transaction(async (tx) => {
+      const createdUser = await tx.user.create({
+        data: {
+          email: normalizedEmail,
+          passwordHash,
+          role: Role.ADMIN,
+          accountStatus: AccountStatus.PENDING_VERIFICATION,
+          isEmailVerified: false,
+          verificationCodes: {
+            create: {
+              codeHash,
+              type: VerificationType.EMAIL_VERIFICATION,
+              expiresAt,
+            },
+          },
+        },
+      });
+
+      return createdUser;
+    });
+
+    await this.mailService.sendVerificationCode(user.email, dto.fullName, code);
+
+    return {
+      message:
+        'Admin registration successful. A 6-digit verification code has been sent to your email.',
+      user: this.sanitizeUser(user),
+    };
+  }
+
   async verifyEmailCode(
     dto: VerifyCodeDto,
   ): Promise<{ message: string; user: SafeUser }> {
@@ -398,6 +453,10 @@ export class AuthService {
 
   async loginTeacher(dto: LoginDto): Promise<AuthResult> {
     return this.authenticateWithRole(dto, Role.TEACHER);
+  }
+
+  async loginAdmin(dto: LoginDto): Promise<AuthResult> {
+    return this.authenticateWithRole(dto, Role.ADMIN);
   }
 
   private async authenticateWithRole(

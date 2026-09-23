@@ -16,6 +16,7 @@ import {
 import { AuthService } from './auth.service.js';
 import { RegisterParentDto } from './dto/register-parent.dto.js';
 import { RegisterTeacherDto } from './dto/register-teacher.dto.js';
+import { RegisterAdminDto } from './dto/register-admin.dto.js';
 import { LoginDto } from './dto/login.dto.js';
 import { VerifyCodeDto } from './dto/verify-code.dto.js';
 import { ResendCodeDto } from './dto/resend-code.dto.js';
@@ -57,6 +58,20 @@ export class AuthController {
   @ApiResponse({ status: 409, description: 'Email already exists' })
   async registerTeacher(@Body() dto: RegisterTeacherDto) {
     return this.authService.registerTeacher(dto);
+  }
+
+  @Post('admin/register')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Register a new admin account' })
+  @ApiResponse({
+    status: 201,
+    description:
+      'Admin registered successfully and verification code dispatched',
+  })
+  @ApiResponse({ status: 400, description: 'Validation failed' })
+  @ApiResponse({ status: 409, description: 'Email already exists' })
+  async registerAdmin(@Body() dto: RegisterAdminDto) {
+    return this.authService.registerAdmin(dto);
   }
 
   @Post('verify-code')
@@ -122,6 +137,25 @@ export class AuthController {
   })
   async loginTeacher(@Body() dto: LoginDto) {
     return this.authService.loginTeacher(dto);
+  }
+
+  @Post('admin/login')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Log in as an administrator' })
+  @ApiResponse({
+    status: 200,
+    description: 'Login successful, returns tokens and user',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Invalid credentials or role mismatch',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Account pending verification, suspended, or disabled',
+  })
+  async loginAdmin(@Body() dto: LoginDto) {
+    return this.authService.loginAdmin(dto);
   }
 
   @Post('refresh')

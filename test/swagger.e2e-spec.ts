@@ -56,8 +56,10 @@ describe('Swagger Documentation (Check)', () => {
     const paths = Object.keys(document.paths);
     expect(paths).toContain('/api/auth/parent/register');
     expect(paths).toContain('/api/auth/teacher/register');
+    expect(paths).toContain('/api/auth/admin/register');
     expect(paths).toContain('/api/auth/parent/login');
     expect(paths).toContain('/api/auth/teacher/login');
+    expect(paths).toContain('/api/auth/admin/login');
     expect(paths).toContain('/api/auth/verify-code');
     expect(paths).toContain('/api/auth/resend-code');
     expect(paths).toContain('/api/auth/refresh');

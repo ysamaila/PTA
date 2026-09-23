@@ -39,9 +39,56 @@ export class MailService {
     `;
     const textContent = `Hello ${recipientName || 'there'},\n\nYour PTA verification code is: ${code}\nThis code will expire in 10 minutes.`;
 
+    return this.dispatchEmail(
+      toEmail,
+      recipientName,
+      subject,
+      htmlContent,
+      textContent,
+      'Verification code',
+    );
+  }
+
+  async sendPasswordResetCode(
+    toEmail: string,
+    recipientName: string,
+    code: string,
+  ): Promise<boolean> {
+    const subject = 'Reset Your Password - PTA';
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 8px;">
+        <h2 style="color: #1e293b; margin-bottom: 16px;">PTA Password Reset</h2>
+        <p style="color: #475569; font-size: 16px;">Hello ${recipientName || 'there'},</p>
+        <p style="color: #475569; font-size: 16px;">We received a request to reset your password. Use the 6-digit code below to set a new password:</p>
+        <div style="background-color: #fef2f2; border: 1px solid #fecaca; padding: 16px; border-radius: 6px; text-align: center; margin: 24px 0;">
+          <span style="font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #991b1b;">${code}</span>
+        </div>
+        <p style="color: #64748b; font-size: 14px;">This code is valid for 10 minutes. If you did not request a password reset, you can safely ignore this email.</p>
+      </div>
+    `;
+    const textContent = `Hello ${recipientName || 'there'},\n\nYour PTA password reset code is: ${code}\nThis code will expire in 10 minutes.\nIf you did not request this, please ignore this email.`;
+
+    return this.dispatchEmail(
+      toEmail,
+      recipientName,
+      subject,
+      htmlContent,
+      textContent,
+      'Password reset code',
+    );
+  }
+
+  private async dispatchEmail(
+    toEmail: string,
+    recipientName: string,
+    subject: string,
+    htmlContent: string,
+    textContent: string,
+    actionType: string,
+  ): Promise<boolean> {
     if (!this.apiKey || this.apiKey.includes('your_brevo_api_key')) {
       this.logger.warn(
-        `Brevo API key not configured. Mock delivery of code [${code}] to ${toEmail}`,
+        `Brevo API key not configured. Mock delivery of ${actionType} to ${toEmail}`,
       );
       return true;
     }
@@ -78,7 +125,7 @@ export class MailService {
         messageId?: string;
       };
       this.logger.log(
-        `Verification code successfully dispatched via Brevo to ${toEmail}${data.messageId ? ` [MessageID: ${data.messageId}]` : ''}`,
+        `${actionType} successfully dispatched via Brevo to ${toEmail}${data.messageId ? ` [MessageID: ${data.messageId}]` : ''}`,
       );
       return true;
     } catch (err) {

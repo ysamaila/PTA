@@ -63,6 +63,9 @@ describe('Swagger Documentation (Check)', () => {
     expect(paths).toContain('/api/auth/refresh');
     expect(paths).toContain('/api/auth/logout');
     expect(paths).toContain('/api/auth/me');
+    expect(paths).toContain('/api/auth/forgot-password');
+    expect(paths).toContain('/api/auth/reset-password');
+    expect(paths).toContain('/api/auth/change-password');
   });
 
   it('should serve Swagger UI at /api/docs', async () => {

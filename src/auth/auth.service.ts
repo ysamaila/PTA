@@ -16,6 +16,9 @@ import { RegisterTeacherDto } from './dto/register-teacher.dto.js';
 import { LoginDto } from './dto/login.dto.js';
 import { VerifyCodeDto } from './dto/verify-code.dto.js';
 import { ResendCodeDto } from './dto/resend-code.dto.js';
+import { ForgotPasswordDto } from './dto/forgot-password.dto.js';
+import { ResetPasswordDto } from './dto/reset-password.dto.js';
+import { ChangePasswordDto } from './dto/change-password.dto.js';
 import {
   Role,
   AccountStatus,
@@ -484,5 +487,192 @@ export class AuthService {
       await this.tokenService.revokeAllUserTokens(userId);
     }
     return { message: 'Logged out successfully' };
+  }
+
+  async forgotPassword(dto: ForgotPasswordDto): Promise<{ message: string }> {
+    const normalizedEmail = dto.email.trim().toLowerCase();
+
+    const user = await this.prisma.user.findUnique({
+      where: { email: normalizedEmail },
+      include: { parentProfile: true, teacherProfile: true },
+    });
+
+    if (!user) {
+      return {
+        message:
+          'If an account with that email exists, a password reset code has been sent.',
+      };
+    }
+
+    const recentCode = await this.prisma.verificationCode.findFirst({
+      where: {
+        userId: user.id,
+        type: VerificationType.PASSWORD_RESET,
+        usedAt: null,
+        createdAt: { gte: new Date(Date.now() - 60 * 1000) },
+      },
+    });
+
+    if (recentCode) {
+      throw new BadRequestException(
+        'Please wait at least 60 seconds before requesting another password reset code.',
+      );
+    }
+
+    const code = this.generateSixDigitCode();
+    const codeHash = this.tokenService.hashToken(code);
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.verificationCode.updateMany({
+        where: {
+          userId: user.id,
+          type: VerificationType.PASSWORD_RESET,
+          usedAt: null,
+        },
+        data: { usedAt: new Date() },
+      });
+
+      await tx.verificationCode.create({
+        data: {
+          userId: user.id,
+          codeHash,
+          type: VerificationType.PASSWORD_RESET,
+          expiresAt,
+        },
+      });
+    });
+
+    const recipientName =
+      user.parentProfile?.fullName ||
+      user.teacherProfile?.fullName ||
+      user.email;
+
+    await this.mailService.sendPasswordResetCode(
+      user.email,
+      recipientName,
+      code,
+    );
+
+    return {
+      message:
+        'If an account with that email exists, a password reset code has been sent.',
+    };
+  }
+
+  async resetPassword(dto: ResetPasswordDto): Promise<{ message: string }> {
+    const normalizedEmail = dto.email.trim().toLowerCase();
+
+    const user = await this.prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+
+    if (!user) {
+      throw new BadRequestException(
+        'Invalid request or verification code expired',
+      );
+    }
+
+    const latestCode = await this.prisma.verificationCode.findFirst({
+      where: {
+        userId: user.id,
+        type: VerificationType.PASSWORD_RESET,
+        usedAt: null,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!latestCode) {
+      throw new BadRequestException(
+        'No pending password reset code found. Please request a new one.',
+      );
+    }
+
+    if (new Date() > latestCode.expiresAt) {
+      throw new BadRequestException(
+        'Password reset code has expired. Please request a new one.',
+      );
+    }
+
+    if (latestCode.attempts >= 5) {
+      throw new BadRequestException(
+        'Maximum verification attempts exceeded. Please request a new password reset code.',
+      );
+    }
+
+    const incomingHash = this.tokenService.hashToken(dto.code.trim());
+    if (incomingHash !== latestCode.codeHash) {
+      await this.prisma.verificationCode.update({
+        where: { id: latestCode.id },
+        data: { attempts: { increment: 1 } },
+      });
+      throw new BadRequestException('Invalid password reset code');
+    }
+
+    const passwordHash = await argon2.hash(dto.newPassword, {
+      type: argon2.argon2id,
+      memoryCost: 65536,
+      timeCost: 3,
+      parallelism: 4,
+    });
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.verificationCode.update({
+        where: { id: latestCode.id },
+        data: { usedAt: new Date() },
+      });
+
+      await tx.user.update({
+        where: { id: user.id },
+        data: { passwordHash },
+      });
+    });
+
+    await this.tokenService.revokeAllUserTokens(user.id);
+
+    return {
+      message:
+        'Password has been successfully reset. You may now log in with your new password.',
+    };
+  }
+
+  async changePassword(
+    userId: string,
+    dto: ChangePasswordDto,
+  ): Promise<{ message: string }> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const isMatch = await argon2.verify(user.passwordHash, dto.currentPassword);
+    if (!isMatch) {
+      throw new UnauthorizedException('Current password does not match');
+    }
+
+    if (dto.currentPassword === dto.newPassword) {
+      throw new BadRequestException(
+        'New password must be different from current password',
+      );
+    }
+
+    const passwordHash = await argon2.hash(dto.newPassword, {
+      type: argon2.argon2id,
+      memoryCost: 65536,
+      timeCost: 3,
+      parallelism: 4,
+    });
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash },
+    });
+
+    await this.tokenService.revokeAllUserTokens(user.id);
+
+    return { message: 'Password changed successfully' };
   }
 }

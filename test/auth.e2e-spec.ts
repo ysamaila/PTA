@@ -101,6 +101,7 @@ describe('Authentication (e2e)', () => {
 
   const mockMail = {
     sendVerificationCode: jest.fn().mockResolvedValue(true),
+    sendPasswordResetCode: jest.fn().mockResolvedValue(true),
   };
 
   beforeAll(async () => {
@@ -219,6 +220,54 @@ describe('Authentication (e2e)', () => {
           expect.stringContaining('Verification code must be exactly 6 digits'),
         ]),
       );
+    });
+
+    it('POST /api/auth/forgot-password - validates email and returns anti-enumeration response', async () => {
+      const invalidRes = await request(app.getHttpServer())
+        .post('/api/auth/forgot-password')
+        .send({ email: 'not-an-email' });
+
+      expect(invalidRes.status).toBe(400);
+
+      const validRes = await request(app.getHttpServer())
+        .post('/api/auth/forgot-password')
+        .send({ email: 'validparent@example.com' });
+
+      expect(validRes.status).toBe(200);
+      expect(validRes.body.message).toContain(
+        'If an account with that email exists',
+      );
+    });
+
+    it('POST /api/auth/reset-password - validates payload format', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/api/auth/reset-password')
+        .send({
+          email: 'validparent@example.com',
+          code: '12',
+          newPassword: 'short',
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toEqual(
+        expect.arrayContaining([
+          expect.stringContaining('Verification code must be exactly 6 digits'),
+          expect.stringContaining(
+            'Password must be at least 8 characters long',
+          ),
+        ]),
+      );
+    });
+
+    it('POST /api/auth/change-password - rejects unauthenticated requests with 401', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/api/auth/change-password')
+        .send({
+          currentPassword: 'OldPassword123!',
+          newPassword: 'NewPassword123!',
+        });
+
+      expect(res.status).toBe(401);
     });
   });
 });

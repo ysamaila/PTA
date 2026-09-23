@@ -20,6 +20,9 @@ import { LoginDto } from './dto/login.dto.js';
 import { VerifyCodeDto } from './dto/verify-code.dto.js';
 import { ResendCodeDto } from './dto/resend-code.dto.js';
 import { RefreshTokenDto } from './dto/refresh-token.dto.js';
+import { ForgotPasswordDto } from './dto/forgot-password.dto.js';
+import { ResetPasswordDto } from './dto/reset-password.dto.js';
+import { ChangePasswordDto } from './dto/change-password.dto.js';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 
@@ -160,5 +163,58 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getMe(@CurrentUser('id') userId: string) {
     return this.authService.getMe(userId);
+  }
+
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Initiate password reset flow by sending a 6-digit OTP code',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Password reset code sent if account exists',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Validation failed or rate limited',
+  })
+  async forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(dto);
+  }
+
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Reset account password using 6-digit OTP code' })
+  @ApiResponse({
+    status: 200,
+    description: 'Password reset successful',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid, expired, or max-attempt exceeded reset code',
+  })
+  async resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.authService.resetPassword(dto);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @Post('change-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Change password for currently authenticated user' })
+  @ApiResponse({
+    status: 200,
+    description: 'Password changed successfully',
+  })
+  @ApiResponse({ status: 400, description: 'Invalid new password' })
+  @ApiResponse({
+    status: 401,
+    description: 'Current password mismatch or unauthorized',
+  })
+  async changePassword(
+    @CurrentUser('id') userId: string,
+    @Body() dto: ChangePasswordDto,
+  ) {
+    return this.authService.changePassword(userId, dto);
   }
 }

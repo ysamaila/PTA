@@ -47,6 +47,7 @@ describe('AuthService', () => {
 
   const mockMailService = {
     sendVerificationCode: jest.fn().mockResolvedValue(true),
+    sendPasswordResetCode: jest.fn().mockResolvedValue(true),
   };
 
   beforeEach(async () => {
@@ -318,6 +319,158 @@ describe('AuthService', () => {
           password: 'Secret123',
         }),
       ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('forgotPassword', () => {
+    it('should return anti-enumeration message if user does not exist', async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue(null);
+
+      const res = await service.forgotPassword({
+        email: 'nonexistent@example.com',
+      });
+      expect(res.message).toContain('If an account with that email exists');
+      expect(mockMailService.sendPasswordResetCode).not.toHaveBeenCalled();
+    });
+
+    it('should dispatch password reset code and return success message', async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        id: 'user_1',
+        email: 'parent@example.com',
+        parentProfile: { fullName: 'Parent One' },
+      });
+      mockPrismaService.verificationCode.findFirst.mockResolvedValue(null);
+      mockPrismaService.verificationCode.updateMany.mockResolvedValue({
+        count: 1,
+      });
+      mockPrismaService.verificationCode.create.mockResolvedValue({
+        id: 'code_1',
+      });
+
+      const res = await service.forgotPassword({ email: 'parent@example.com' });
+      expect(res.message).toContain('If an account with that email exists');
+      expect(mockMailService.sendPasswordResetCode).toHaveBeenCalledWith(
+        'parent@example.com',
+        'Parent One',
+        expect.any(String),
+      );
+    });
+
+    it('should enforce 60s rate limit on forgot-password requests', async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        id: 'user_1',
+        email: 'parent@example.com',
+      });
+      mockPrismaService.verificationCode.findFirst.mockResolvedValue({
+        id: 'recent_code',
+        createdAt: new Date(),
+      });
+
+      await expect(
+        service.forgotPassword({ email: 'parent@example.com' }),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('resetPassword', () => {
+    it('should reject if code is invalid or expired', async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        id: 'user_1',
+        email: 'parent@example.com',
+      });
+      mockPrismaService.verificationCode.findFirst.mockResolvedValue({
+        id: 'code_1',
+        codeHash: 'hashed_999999',
+        expiresAt: new Date(Date.now() + 600000),
+        attempts: 0,
+      });
+
+      await expect(
+        service.resetPassword({
+          email: 'parent@example.com',
+          code: '123456',
+          newPassword: 'BrandNewPassword123!',
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should successfully update password and revoke all tokens', async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        id: 'user_1',
+        email: 'parent@example.com',
+      });
+      mockPrismaService.verificationCode.findFirst.mockResolvedValue({
+        id: 'code_1',
+        codeHash: 'hashed_123456',
+        expiresAt: new Date(Date.now() + 600000),
+        attempts: 0,
+      });
+      mockPrismaService.verificationCode.update.mockResolvedValue({
+        id: 'code_1',
+      });
+      mockPrismaService.user.update.mockResolvedValue({ id: 'user_1' });
+
+      const res = await service.resetPassword({
+        email: 'parent@example.com',
+        code: '123456',
+        newPassword: 'BrandNewPassword123!',
+      });
+
+      expect(res.message).toContain('Password has been successfully reset');
+      expect(mockTokenService.revokeAllUserTokens).toHaveBeenCalledWith(
+        'user_1',
+      );
+    });
+  });
+
+  describe('changePassword', () => {
+    it('should reject if current password does not match', async () => {
+      const currentHash = await argon2.hash('OldPassword123!');
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        id: 'user_1',
+        passwordHash: currentHash,
+      });
+
+      await expect(
+        service.changePassword('user_1', {
+          currentPassword: 'WrongPassword!',
+          newPassword: 'NewPassword123!',
+        }),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('should reject if new password is identical to current password', async () => {
+      const currentHash = await argon2.hash('SamePassword123!');
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        id: 'user_1',
+        passwordHash: currentHash,
+      });
+
+      await expect(
+        service.changePassword('user_1', {
+          currentPassword: 'SamePassword123!',
+          newPassword: 'SamePassword123!',
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should update password and revoke all tokens on valid change', async () => {
+      const currentHash = await argon2.hash('OldPassword123!');
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        id: 'user_1',
+        passwordHash: currentHash,
+      });
+      mockPrismaService.user.update.mockResolvedValue({ id: 'user_1' });
+
+      const res = await service.changePassword('user_1', {
+        currentPassword: 'OldPassword123!',
+        newPassword: 'BrandNewPassword123!',
+      });
+
+      expect(res.message).toBe('Password changed successfully');
+      expect(mockTokenService.revokeAllUserTokens).toHaveBeenCalledWith(
+        'user_1',
+      );
     });
   });
 });

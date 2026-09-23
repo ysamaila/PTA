@@ -33,7 +33,7 @@ async function bootstrap() {
   });
 
   const swaggerConfig = new DocumentBuilder()
-    .setTitle('Akadia PTA Authentication API')
+    .setTitle('PTA Authentication API')
     .setDescription(
       'Authentication Module with Role-Based Access Control and Brevo OTP Verification',
     )

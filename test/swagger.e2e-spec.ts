@@ -23,7 +23,7 @@ describe('Swagger Documentation (Check)', () => {
     app = moduleFixture.createNestApplication();
 
     const swaggerConfig = new DocumentBuilder()
-      .setTitle('Akadia PTA Authentication API')
+      .setTitle('PTA Authentication API')
       .setDescription(
         'Authentication Module with Role-Based Access Control and Brevo OTP Verification',
       )
@@ -48,7 +48,7 @@ describe('Swagger Documentation (Check)', () => {
   it('should generate a valid OpenAPI 3.0 specification document', () => {
     expect(document).toBeDefined();
     expect(document.openapi).toMatch(/^3\./);
-    expect(document.info.title).toBe('Akadia PTA Authentication API');
+    expect(document.info.title).toBe('PTA Authentication API');
     expect(document.components.securitySchemes.bearer).toBeDefined();
   });
 

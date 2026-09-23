@@ -1442,7 +1442,7 @@
     ],
     "info": {
         "_postman_id": "6162a082-117e-4daf-9709-054b7c3c60ab",
-        "name": "Akadia PTA Authentication API",
+        "name": "PTA Authentication API",
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
         "description": {
             "content": "Authentication Module with Role-Based Access Control and Brevo OTP Verification",

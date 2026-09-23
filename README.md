@@ -1,98 +1,183 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# PTA Backend - Authentication & Authorization Module
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A secure, modular, and production-ready authentication and role-based access control (RBAC) foundation for the Parent-Teacher Association (PTA) platform. Built with **NestJS**, **Prisma ORM**, **PostgreSQL (Neon)**, **Argon2id**, and **Brevo Transactional Email**.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+---
 
-## Description
+## 🛠️ Tech Stack & Architecture
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+- **Backend Framework**: [NestJS](https://nestjs.com/) v11 (TypeScript, strict mode, `nodenext` modules)
+- **Database & ORM**: [PostgreSQL (Neon)](https://neon.tech/) with [Prisma 7](https://www.prisma.io/) and `@prisma/adapter-pg`
+- **Password Security**: **Argon2id** (`timeCost: 3`, `memoryCost: 65536`, `parallelism: 4`)
+- **Email Delivery**: **Brevo Transactional API** delivering 6-digit verification codes
+- **Authentication**: Stateless JWT access tokens + cryptographically secure SHA-256 hashed refresh tokens with automatic rotation and reuse detection
+- **Authorization**: Reusable Role-Based Access Control (`@Roles()`, `RolesGuard`, `@CurrentUser()`)
+- **API Documentation**: [Swagger / OpenAPI 3.0](https://swagger.io/) auto-generated at `/api/docs`
+- **Rate Limiting**: `@nestjs/throttler` global request rate limiting
 
-## Project setup
+---
 
-```bash
-$ npm install
+## 📋 Features
+
+- **Parent Authentication**: Self-registration, 6-digit OTP verification via Brevo, login, and profile management.
+- **Teacher Authentication**: Registration with subject specialization, OTP verification, and administrative approval gating.
+- **Account Status Lifecycle**:
+  - `PENDING_VERIFICATION`: Initial state upon registration; login is forbidden until 6-digit OTP is verified.
+  - `PENDING_APPROVAL`: Automatically applied to teachers after email verification; restricted resources require administrator approval.
+  - `ACTIVE`: Active accounts permitted to access authorized features.
+  - `SUSPENDED` / `DISABLED`: Instantly blocked at the guard and login layers.
+- **Cross-Role Portal Isolation**: Strict backend role verification prevents parents from authenticating through the teacher portal and vice-versa.
+- **Token Security**: Refresh token rotation issues a new token pair on each exchange; presentation of an already revoked token triggers immediate revocation of all user sessions (token reuse detection).
+
+---
+
+## 🌐 API Endpoints
+
+Interactive Swagger documentation is available locally at: **`http://localhost:4000/api/docs`**
+
+| Method | Endpoint | Description | Auth Required |
+|---|---|---|---|
+| `POST` | `/api/auth/parent/register` | Register new parent account and send OTP | None |
+| `POST` | `/api/auth/teacher/register` | Register new teacher account and send OTP | None |
+| `POST` | `/api/auth/verify-code` | Verify 6-digit OTP delivered via Brevo | None |
+| `POST` | `/api/auth/resend-code` | Resend 6-digit OTP (60s rate limit) | None |
+| `POST` | `/api/auth/parent/login` | Authenticate parent and receive JWT tokens | None |
+| `POST` | `/api/auth/teacher/login` | Authenticate teacher and receive JWT tokens | None |
+| `POST` | `/api/auth/refresh` | Rotate and exchange refresh token for new tokens | None |
+| `POST` | `/api/auth/logout` | Invalidate active refresh tokens | Bearer JWT |
+| `GET` | `/api/auth/me` | Fetch authenticated user's profile | Bearer JWT |
+
+---
+
+## ⚙️ Environment Variables
+
+Create a `.env` file in the root directory based on `.env.example`:
+
+```env
+# Application
+APP_ENV=development
+PORT=4000
+CORS_ORIGIN=http://localhost:3000,http://localhost:5173
+
+# Database (PostgreSQL / Neon)
+DATABASE_URL="postgresql://<user>:<password>@<host>/<database>?sslmode=require"
+
+# JWT Authentication
+JWT_SECRET=super-secret-jwt-key-minimum-32-chars-long
+JWT_EXPIRES_IN=15m
+REFRESH_TOKEN_EXPIRES_DAYS=7
+
+# Brevo (Sendinblue) Transactional Email
+BREVO_API_KEY=xkeysib-your-brevo-api-key
+BREVO_SENDER_EMAIL=yusuf.hilside@gmail.com
+BREVO_SENDER_NAME=PTA
 ```
 
-## Compile and run the project
+---
 
+## 🚀 Getting Started
+
+### 1. Install Dependencies
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+npm install
 ```
 
-## Run tests
-
+### 2. Generate Prisma Client & Run Migrations
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npx prisma generate
+npx prisma migrate dev --name init
 ```
 
-## Deployment
+### 3. Run the Application
+- **Development Mode** (with hot reload):
+  ```bash
+  npm run start:dev
+  ```
+- **Production Mode** (fast pre-compiled execution):
+  ```bash
+  npm run build
+  npm run start:prod
+  ```
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+---
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+## 🧪 Testing & Verification
+
+Run the automated test suites and quality checks:
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+# Run all quality checks (lint + typecheck + unit + e2e)
+npm run check:all
+
+# Run unit tests (24 tests across auth, tokens, roles)
+npm test
+
+# Run E2E tests (including Swagger documentation validation)
+npm run test:e2e
+
+# Run linter
+npm run lint
+
+# Run TypeScript type check
+npm run typecheck
+
+# Run real-user lifecycle simulation
+node scripts/simulate-user-flows.mjs
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+---
 
-## Resources
+## 🚢 Deployment (Render)
 
-Check out a few resources that may come in handy when working with NestJS:
+This repository includes pre-configured scripts for zero-downtime deployment on [Render](https://render.com/):
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+- **Build Command**:
+  ```bash
+  npm run render:build
+  ```
+  *(Generates Prisma Client, applies production migrations, and compiles NestJS)*
 
-## Support
+- **Start Command**:
+  ```bash
+  npm run render:start
+  ```
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+---
 
-## Stay in touch
+## 🔌 How Future Modules Reuse This Auth Foundation
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+Future feature modules (e.g. Announcements, Attendance, Grades, Payments) can protect their controllers using the shared guards and decorators:
 
-## License
+```typescript
+import { Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../common/guards/roles.guard';
+import { Roles } from '../common/decorators/roles.decorator';
+import { CurrentUser, AuthenticatedUser } from '../common/decorators/current-user.decorator';
+import { Role } from '../common/enums';
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+@Controller('api/announcements')
+@UseGuards(JwtAuthGuard, RolesGuard)
+export class AnnouncementsController {
+
+  // Only teachers can create announcements
+  @Post()
+  @Roles(Role.TEACHER)
+  createAnnouncement(@CurrentUser() user: AuthenticatedUser) {
+    return { authorId: user.id };
+  }
+
+  // Both parents and teachers can view announcements
+  @Get()
+  @Roles(Role.PARENT, Role.TEACHER)
+  getAnnouncements() {
+    return [];
+  }
+}
+```
+
+---
+
+## 📄 License
+
+UNLICENSED - Private repository for PTA Project.

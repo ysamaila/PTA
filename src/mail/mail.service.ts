@@ -74,7 +74,9 @@ export class MailService {
         return false;
       }
 
-      const data = (await response.json().catch(() => ({}))) as { messageId?: string };
+      const data = (await response.json().catch(() => ({}))) as {
+        messageId?: string;
+      };
       this.logger.log(
         `Verification code successfully dispatched via Brevo to ${toEmail}${data.messageId ? ` [MessageID: ${data.messageId}]` : ''}`,
       );

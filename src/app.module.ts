@@ -2,11 +2,13 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { PrismaModule } from './database/prisma.module.js';
 import { MailModule } from './mail/mail.module.js';
 import { AuthModule } from './auth/auth.module.js';
+import { KeepAliveModule } from './tasks/keep-alive.module.js';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter.js';
 
 @Module({
@@ -15,6 +17,7 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter.js';
       isGlobal: true,
       envFilePath: '.env',
     }),
+    ScheduleModule.forRoot(),
     ThrottlerModule.forRoot([
       {
         ttl: 60000,
@@ -24,6 +27,7 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter.js';
     PrismaModule,
     MailModule,
     AuthModule,
+    KeepAliveModule,
   ],
   controllers: [AppController],
   providers: [

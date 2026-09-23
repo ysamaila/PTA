@@ -88,10 +88,14 @@ async function runSimulation() {
   const reg1 = await requestJson(`${BASE_URL}/api/auth/parent/register`, {
     method: 'POST',
     body: JSON.stringify({
-      email: email1,
-      password: defaultPassword,
+      role: 'parent',
       fullName: 'Yusuf Samaila (Parent)',
-      phone: '+2348011112233',
+      email: email1,
+      schoolName: 'Apex International Academy',
+      studentCode: 'APX-99201',
+      password: defaultPassword,
+      confirmPassword: defaultPassword,
+      termsAccepted: true,
     }),
   });
 
@@ -167,11 +171,13 @@ async function runSimulation() {
   const reg2 = await requestJson(`${BASE_URL}/api/auth/teacher/register`, {
     method: 'POST',
     body: JSON.stringify({
-      email: email2,
-      password: defaultPassword,
+      role: 'teacher',
       fullName: 'Yusuf 7 (Teacher)',
-      phone: '+2348099998877',
-      subjectSpecialization: 'Computer Science & Mathematics',
+      workEmail: email2,
+      schoolName: 'Apex International Academy',
+      password: defaultPassword,
+      confirmPassword: defaultPassword,
+      termsAccepted: true,
     }),
   });
   if (reg2.status !== 201) {

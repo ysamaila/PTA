@@ -1,11 +1,12 @@
 import crypto from 'node:crypto';
+import http from 'node:http';
 import pg from 'pg';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
 const PORT = process.env.PORT || 4000;
-const BASE_URL = `http://localhost:${PORT}`;
+const BASE_URL = `http://127.0.0.1:${PORT}`;
 const connectionString = process.env.DATABASE_URL;
 
 if (!connectionString) {
@@ -13,10 +14,28 @@ if (!connectionString) {
   process.exit(1);
 }
 
-const pgClient = new pg.Client({
+const pool = new pg.Pool({
   connectionString,
   ssl: { rejectUnauthorized: false },
+  max: 5,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
 });
+
+pool.on('error', (err) => {
+  console.warn('Neon pool background notice:', err.message);
+});
+
+async function query(text, params) {
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      return await pool.query(text, params);
+    } catch (err) {
+      if (attempt === 3) throw err;
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+  }
+}
 
 function resolveOtpFromHash(targetHash) {
   for (let i = 100000; i <= 999999; i++) {
@@ -62,11 +81,49 @@ function logSecurity(message) {
   console.log(`  ${colors.yellow}🛡 ${message}${colors.reset}`);
 }
 
-async function requestJson(url, options = {}) {
-  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
-  const res = await fetch(url, { ...options, headers });
-  const data = await res.json().catch(() => ({}));
-  return { status: res.status, ok: res.ok, data };
+function requestJson(urlStr, options = {}) {
+  return new Promise((resolve, reject) => {
+    const url = new URL(urlStr);
+    const bodyData = options.body || '';
+    const headers = {
+      'Content-Type': 'application/json',
+      'Connection': 'close',
+      ...(options.headers || {}),
+    };
+    if (bodyData) {
+      headers['Content-Length'] = Buffer.byteLength(bodyData);
+    }
+    const req = http.request(
+      {
+        hostname: url.hostname,
+        port: url.port,
+        path: url.pathname + url.search,
+        method: options.method || 'GET',
+        headers,
+      },
+      (res) => {
+        let raw = '';
+        res.on('data', (chunk) => (raw += chunk));
+        res.on('end', () => {
+          let data = {};
+          try {
+            data = JSON.parse(raw);
+          } catch {
+            data = raw;
+          }
+          resolve({ status: res.statusCode, ok: res.statusCode >= 200 && res.statusCode < 300, data });
+        });
+      }
+    );
+    req.on('error', reject);
+    req.setTimeout(30000, () => {
+      req.destroy(new Error('Request timeout'));
+    });
+    if (bodyData) {
+      req.write(bodyData);
+    }
+    req.end();
+  });
 }
 
 async function runAllRolesFlow() {
@@ -74,7 +131,7 @@ async function runAllRolesFlow() {
   console.log(`Target Backend: ${colors.cyan}${BASE_URL}${colors.reset}`);
   console.log(`Neon Database:  ${colors.cyan}Connecting...${colors.reset}`);
 
-  await pgClient.connect();
+  await query('SELECT 1');
   console.log(`Neon Database:  ${colors.green}Connected${colors.reset}`);
 
   // ==========================================
@@ -82,16 +139,16 @@ async function runAllRolesFlow() {
   // ==========================================
   logStep('0.0', 'PURGING ALL USERS AND ASSOCIATED RECORDS FROM DATABASE');
 
-  const beforeCount = await pgClient.query('SELECT count(*)::int as count FROM users');
+  const beforeCount = await query('SELECT count(*)::int as count FROM users');
   console.log(`  Existing users prior to purge: ${beforeCount.rows[0].count}`);
 
-  await pgClient.query('DELETE FROM verification_codes');
-  await pgClient.query('DELETE FROM refresh_tokens');
-  await pgClient.query('DELETE FROM parent_profiles');
-  await pgClient.query('DELETE FROM teacher_profiles');
-  await pgClient.query('DELETE FROM users');
+  await query('DELETE FROM verification_codes');
+  await query('DELETE FROM refresh_tokens');
+  await query('DELETE FROM parent_profiles');
+  await query('DELETE FROM teacher_profiles');
+  await query('DELETE FROM users');
 
-  const afterCount = await pgClient.query('SELECT count(*)::int as count FROM users');
+  const afterCount = await query('SELECT count(*)::int as count FROM users');
   if (afterCount.rows[0].count !== 0) {
     throw new Error(`Purge failed. Remaining users: ${afterCount.rows[0].count}`);
   }
@@ -122,10 +179,14 @@ async function runAllRolesFlow() {
   const parentReg = await requestJson(`${BASE_URL}/api/auth/parent/register`, {
     method: 'POST',
     body: JSON.stringify({
-      email: parentEmail,
-      password: initialPassword,
+      role: 'parent',
       fullName: 'Yusuf Samaila (Parent)',
-      phone: '+2348011223344',
+      email: parentEmail,
+      schoolName: 'Apex International Academy',
+      studentCode: 'APX-99201',
+      password: initialPassword,
+      confirmPassword: initialPassword,
+      termsAccepted: true,
     }),
   });
   if (parentReg.status !== 201) throw new Error(`Parent signup failed: ${JSON.stringify(parentReg.data)}`);
@@ -133,7 +194,7 @@ async function runAllRolesFlow() {
   results.parent.signup = true;
 
   logStep('1.2', 'Resolving OTP from database and email dispatch');
-  const parentCodeRow = await pgClient.query(
+  const parentCodeRow = await query(
     `SELECT vc."codeHash" FROM verification_codes vc 
      JOIN users u ON u.id = vc."userId" 
      WHERE u.email = $1 AND vc.type = 'EMAIL_VERIFICATION' AND vc."usedAt" IS NULL 
@@ -212,11 +273,13 @@ async function runAllRolesFlow() {
   const teacherReg = await requestJson(`${BASE_URL}/api/auth/teacher/register`, {
     method: 'POST',
     body: JSON.stringify({
-      email: teacherEmail,
-      password: initialPassword,
+      role: 'teacher',
       fullName: 'Mr. Yusuf Samaila (Teacher)',
-      phone: '+2348055667788',
-      subjectSpecialization: 'Advanced Computer Science',
+      workEmail: teacherEmail,
+      schoolName: 'Apex International Academy',
+      password: initialPassword,
+      confirmPassword: initialPassword,
+      termsAccepted: true,
     }),
   });
   if (teacherReg.status !== 201) throw new Error(`Teacher signup failed: ${JSON.stringify(teacherReg.data)}`);
@@ -224,7 +287,7 @@ async function runAllRolesFlow() {
   results.teacher.signup = true;
 
   logStep('2.2', 'Resolving Teacher OTP code');
-  const teacherCodeRow = await pgClient.query(
+  const teacherCodeRow = await query(
     `SELECT vc."codeHash" FROM verification_codes vc 
      JOIN users u ON u.id = vc."userId" 
      WHERE u.email = $1 AND vc.type = 'EMAIL_VERIFICATION' AND vc."usedAt" IS NULL 
@@ -255,7 +318,7 @@ async function runAllRolesFlow() {
   }
 
   logStep('2.5', 'Admin Approves Teacher (Simulating administrator review)');
-  await pgClient.query(`UPDATE users SET "accountStatus" = 'ACTIVE' WHERE email = $1`, [teacherEmail]);
+  await query(`UPDATE users SET "accountStatus" = 'ACTIVE' WHERE email = $1`, [teacherEmail]);
   logSuccess(`Teacher account approved and set to ACTIVE in Neon DB.`);
 
   logStep('2.6', 'Teacher Login after approval');
@@ -310,7 +373,7 @@ async function runAllRolesFlow() {
   results.admin.signup = true;
 
   logStep('3.2', 'Resolving Admin OTP code');
-  const adminCodeRow = await pgClient.query(
+  const adminCodeRow = await query(
     `SELECT vc."codeHash" FROM verification_codes vc 
      JOIN users u ON u.id = vc."userId" 
      WHERE u.email = $1 AND vc.type = 'EMAIL_VERIFICATION' AND vc."usedAt" IS NULL 
@@ -376,7 +439,7 @@ async function runAllRolesFlow() {
   logSuccess(`Forgot password initiated: "${forgotRes.data.message}"`);
 
   logStep('4.2', 'Resolving Password Reset OTP from database');
-  const resetCodeRow = await pgClient.query(
+  const resetCodeRow = await query(
     `SELECT vc."codeHash" FROM verification_codes vc 
      JOIN users u ON u.id = vc."userId" 
      WHERE u.email = $1 AND vc.type = 'PASSWORD_RESET' AND vc."usedAt" IS NULL 
@@ -413,7 +476,7 @@ async function runAllRolesFlow() {
   // ==========================================
   banner('FINAL DATABASE & SECURITY REPORT');
 
-  const finalUsers = await pgClient.query(`
+  const finalUsers = await query(`
     SELECT email, role, "accountStatus", "isEmailVerified", "emailVerifiedAt" 
     FROM users ORDER BY role
   `);
@@ -421,18 +484,18 @@ async function runAllRolesFlow() {
   console.log(`Total Active Users in Database: ${finalUsers.rows.length}`);
   console.table(finalUsers.rows);
 
-  const tokensCount = await pgClient.query(`SELECT count(*)::int as count FROM refresh_tokens`);
-  const codesCount = await pgClient.query(`SELECT count(*)::int as count FROM verification_codes`);
+  const tokensCount = await query(`SELECT count(*)::int as count FROM refresh_tokens`);
+  const codesCount = await query(`SELECT count(*)::int as count FROM verification_codes`);
   console.log(`Total Verification Codes Logged: ${codesCount.rows[0].count}`);
   console.log(`Active Refresh Tokens in DB:    ${tokensCount.rows[0].count}\n`);
 
   console.log(`${colors.green}${colors.bright}ALL 3 ROLES (PARENT, TEACHER, ADMIN) SUCCESSFULLY TESTED THROUGH COMPLETE AUTH LIFECYCLES!${colors.reset}`);
 
-  await pgClient.end();
+  await pool.end();
 }
 
 runAllRolesFlow().catch(async (err) => {
   console.error(`\n${colors.red}${colors.bright}SIMULATION RUNTIME ERROR:${colors.reset}`, err);
-  await pgClient.end().catch(() => {});
+  await pool.end().catch(() => {});
   process.exit(1);
 });

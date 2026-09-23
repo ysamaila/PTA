@@ -36,6 +36,8 @@ export interface SafeUser {
   createdAt: Date;
   profile?: {
     fullName: string;
+    schoolName?: string | null;
+    studentCode?: string | null;
     phone?: string | null;
     subjectSpecialization?: string | null;
   } | null;
@@ -56,10 +58,13 @@ interface UserWithRelations {
   createdAt: Date;
   parentProfile?: {
     fullName: string;
+    schoolName?: string | null;
+    studentCode?: string | null;
     phone?: string | null;
   } | null;
   teacherProfile?: {
     fullName: string;
+    schoolName?: string | null;
     phone?: string | null;
     subjectSpecialization?: string | null;
   } | null;
@@ -82,12 +87,16 @@ export class AuthService {
     if (user.parentProfile) {
       profileData = {
         fullName: user.parentProfile.fullName,
+        schoolName: user.parentProfile.schoolName ?? null,
+        studentCode: user.parentProfile.studentCode ?? null,
         phone: user.parentProfile.phone ?? null,
         subjectSpecialization: null,
       };
     } else if (user.teacherProfile) {
       profileData = {
         fullName: user.teacherProfile.fullName,
+        schoolName: user.teacherProfile.schoolName ?? null,
+        studentCode: null,
         phone: user.teacherProfile.phone ?? null,
         subjectSpecialization:
           user.teacherProfile.subjectSpecialization ?? null,
@@ -109,6 +118,10 @@ export class AuthService {
   async registerParent(
     dto: RegisterParentDto,
   ): Promise<{ message: string; user: SafeUser }> {
+    if (dto.password !== dto.confirmPassword) {
+      throw new BadRequestException('Passwords do not match');
+    }
+
     const normalizedEmail = dto.email.trim().toLowerCase();
 
     const existingUser = await this.prisma.user.findUnique({
@@ -138,9 +151,13 @@ export class AuthService {
           role: Role.PARENT,
           accountStatus: AccountStatus.PENDING_VERIFICATION,
           isEmailVerified: false,
+          termsAccepted: dto.termsAccepted ?? true,
+          termsAcceptedAt: new Date(),
           parentProfile: {
             create: {
               fullName: dto.fullName,
+              schoolName: dto.schoolName,
+              studentCode: dto.studentCode,
               phone: dto.phone,
             },
           },
@@ -172,7 +189,15 @@ export class AuthService {
   async registerTeacher(
     dto: RegisterTeacherDto,
   ): Promise<{ message: string; user: SafeUser }> {
-    const normalizedEmail = dto.email.trim().toLowerCase();
+    if (dto.password !== dto.confirmPassword) {
+      throw new BadRequestException('Passwords do not match');
+    }
+
+    const emailToUse = dto.workEmail || dto.email;
+    if (!emailToUse) {
+      throw new BadRequestException('Work email is required');
+    }
+    const normalizedEmail = emailToUse.trim().toLowerCase();
 
     const existingUser = await this.prisma.user.findUnique({
       where: { email: normalizedEmail },
@@ -201,9 +226,12 @@ export class AuthService {
           role: Role.TEACHER,
           accountStatus: AccountStatus.PENDING_VERIFICATION,
           isEmailVerified: false,
+          termsAccepted: dto.termsAccepted ?? true,
+          termsAcceptedAt: new Date(),
           teacherProfile: {
             create: {
               fullName: dto.fullName,
+              schoolName: dto.schoolName,
               phone: dto.phone,
               subjectSpecialization: dto.subjectSpecialization,
             },

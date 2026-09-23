@@ -1,6 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
+  Equals,
+  IsBoolean,
   IsEmail,
   IsNotEmpty,
   IsOptional,
@@ -10,11 +12,31 @@ import {
 } from 'class-validator';
 
 export class RegisterParentDto {
+  @ApiPropertyOptional({ example: 'parent' })
+  @IsOptional()
+  @IsString()
+  role?: string;
+
+  @ApiProperty({ example: 'Sarah Johnson' })
+  @IsString()
+  @IsNotEmpty({ message: 'Full name is required' })
+  fullName!: string;
+
   @ApiProperty({ example: 'parent@example.com' })
   @Transform(({ value }: { value: string }) => value?.trim().toLowerCase())
   @IsEmail({}, { message: 'Invalid email address' })
   @IsNotEmpty({ message: 'Email is required' })
   email!: string;
+
+  @ApiProperty({ example: 'Greenwood High School' })
+  @IsString()
+  @IsNotEmpty({ message: 'School name is required' })
+  schoolName!: string;
+
+  @ApiProperty({ example: 'STU-98432' })
+  @IsString()
+  @IsNotEmpty({ message: 'Student code is required' })
+  studentCode!: string;
 
   @ApiProperty({ example: 'P@ssword123', minLength: 8 })
   @IsString()
@@ -24,10 +46,15 @@ export class RegisterParentDto {
   })
   password!: string;
 
-  @ApiProperty({ example: 'Sarah Johnson' })
+  @ApiProperty({ example: 'P@ssword123', minLength: 8 })
   @IsString()
-  @IsNotEmpty({ message: 'Full name is required' })
-  fullName!: string;
+  @IsNotEmpty({ message: 'Confirm password is required' })
+  confirmPassword!: string;
+
+  @ApiProperty({ example: true })
+  @IsBoolean({ message: 'termsAccepted must be a boolean' })
+  @Equals(true, { message: 'Terms and conditions must be accepted' })
+  termsAccepted!: boolean;
 
   @ApiPropertyOptional({ example: '+1234567890' })
   @IsOptional()

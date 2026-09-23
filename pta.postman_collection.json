@@ -68,7 +68,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"parent@example.com\",\n  \"password\": \"Password123!\",\n  \"fullName\": \"Sarah Johnson\",\n  \"phone\": \"+1234567890\"\n}",
+              "raw": "{\n  \"role\": \"parent\",\n  \"fullName\": \"Sarah Johnson\",\n  \"email\": \"parent@example.com\",\n  \"schoolName\": \"Greenwood High School\",\n  \"studentCode\": \"STU-88392\",\n  \"password\": \"Password123!\",\n  \"confirmPassword\": \"Password123!\",\n  \"termsAccepted\": true\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -104,7 +104,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"teacher@example.com\",\n  \"password\": \"TeacherPass123!\",\n  \"fullName\": \"Mr. David Clark\",\n  \"phone\": \"+1234567891\",\n  \"subjectSpecialization\": \"Mathematics & Science\"\n}",
+              "raw": "{\n  \"role\": \"teacher\",\n  \"fullName\": \"Mr. David Clark\",\n  \"workEmail\": \"teacher@school.edu\",\n  \"schoolName\": \"Greenwood High School\",\n  \"password\": \"TeacherPass123!\",\n  \"confirmPassword\": \"TeacherPass123!\",\n  \"termsAccepted\": true\n}",
               "options": {
                 "raw": {
                   "language": "json"

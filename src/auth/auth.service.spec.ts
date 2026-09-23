@@ -74,18 +74,25 @@ describe('AuthService', () => {
         accountStatus: data.accountStatus,
         isEmailVerified: data.isEmailVerified,
         emailVerifiedAt: null,
+        termsAccepted: data.termsAccepted,
         createdAt: new Date(),
         parentProfile: {
           fullName: 'Parent One',
+          schoolName: 'Greenwood High',
+          studentCode: 'STU-12345',
           phone: '1234567890',
         },
       }));
 
       const result = await service.registerParent({
-        email: 'parent@example.com',
-        password: 'Password123!',
+        role: 'parent',
         fullName: 'Parent One',
-        phone: '1234567890',
+        email: 'parent@example.com',
+        schoolName: 'Greenwood High',
+        studentCode: 'STU-12345',
+        password: 'Password123!',
+        confirmPassword: 'Password123!',
+        termsAccepted: true,
       });
 
       expect(result.user.role).toBe(Role.PARENT);
@@ -96,6 +103,20 @@ describe('AuthService', () => {
       expect(mockPrismaService.user.create).toHaveBeenCalled();
     });
 
+    it('should throw BadRequestException if passwords do not match', async () => {
+      await expect(
+        service.registerParent({
+          fullName: 'Parent One',
+          email: 'parent@example.com',
+          schoolName: 'Greenwood High',
+          studentCode: 'STU-12345',
+          password: 'Password123!',
+          confirmPassword: 'MismatchPassword!',
+          termsAccepted: true,
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
     it('should reject registration if email is already in use', async () => {
       mockPrismaService.user.findUnique.mockResolvedValue({
         id: 'existing_id',
@@ -103,16 +124,20 @@ describe('AuthService', () => {
 
       await expect(
         service.registerParent({
-          email: 'duplicate@example.com',
-          password: 'Password123!',
           fullName: 'Duplicate User',
+          email: 'duplicate@example.com',
+          schoolName: 'Greenwood High',
+          studentCode: 'STU-12345',
+          password: 'Password123!',
+          confirmPassword: 'Password123!',
+          termsAccepted: true,
         }),
       ).rejects.toThrow(ConflictException);
     });
   });
 
   describe('registerTeacher', () => {
-    it('should successfully register a teacher with TEACHER role', async () => {
+    it('should successfully register a teacher with TEACHER role using workEmail', async () => {
       mockPrismaService.user.findUnique.mockResolvedValue(null);
       mockPrismaService.user.create.mockImplementation(({ data }: any) => ({
         id: 'teacher_123',
@@ -121,18 +146,23 @@ describe('AuthService', () => {
         accountStatus: data.accountStatus,
         isEmailVerified: data.isEmailVerified,
         emailVerifiedAt: null,
+        termsAccepted: data.termsAccepted,
         createdAt: new Date(),
         teacherProfile: {
           fullName: 'Teacher Jane',
+          schoolName: 'Science Academy',
           subjectSpecialization: 'Physics',
         },
       }));
 
       const result = await service.registerTeacher({
-        email: 'teacher@example.com',
-        password: 'Password123!',
+        role: 'teacher',
         fullName: 'Teacher Jane',
-        subjectSpecialization: 'Physics',
+        workEmail: 'teacher@school.edu',
+        schoolName: 'Science Academy',
+        password: 'Password123!',
+        confirmPassword: 'Password123!',
+        termsAccepted: true,
       });
 
       expect(result.user.role).toBe(Role.TEACHER);
@@ -140,6 +170,19 @@ describe('AuthService', () => {
         AccountStatus.PENDING_VERIFICATION,
       );
       expect(mockMailService.sendVerificationCode).toHaveBeenCalledTimes(1);
+    });
+
+    it('should throw BadRequestException if passwords do not match', async () => {
+      await expect(
+        service.registerTeacher({
+          fullName: 'Teacher Jane',
+          workEmail: 'teacher@school.edu',
+          schoolName: 'Science Academy',
+          password: 'Password123!',
+          confirmPassword: 'MismatchPassword!',
+          termsAccepted: true,
+        }),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 

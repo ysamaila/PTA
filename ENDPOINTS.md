@@ -62,10 +62,14 @@ This document provides a comprehensive reference for all HTTP endpoints exposed 
 - **Request Body**:
   ```json
   {
-    "email": "parent@example.com",
-    "password": "Password123!",
+    "role": "parent",
     "fullName": "Sarah Johnson",
-    "phone": "+1234567890"
+    "email": "parent@example.com",
+    "schoolName": "Greenwood High School",
+    "studentCode": "STU-88392",
+    "password": "Password123!",
+    "confirmPassword": "Password123!",
+    "termsAccepted": true
   }
   ```
 - **Success Response (201 Created)**:
@@ -82,14 +86,16 @@ This document provides a comprehensive reference for all HTTP endpoints exposed 
       "createdAt": "2026-09-23T11:00:00.000Z",
       "profile": {
         "fullName": "Sarah Johnson",
-        "phone": "+1234567890",
+        "schoolName": "Greenwood High School",
+        "studentCode": "STU-88392",
+        "phone": null,
         "subjectSpecialization": null
       }
     }
   }
   ```
 - **Error Responses**:
-  - `400 Bad Request`: Validation failure (invalid email format, password under 8 characters).
+  - `400 Bad Request`: Validation failure (passwords do not match, termsAccepted is not true, invalid email, weak password).
   - `409 Conflict`: An account with this email already exists.
 
 ---
@@ -106,11 +112,13 @@ This document provides a comprehensive reference for all HTTP endpoints exposed 
 - **Request Body**:
   ```json
   {
-    "email": "teacher@example.com",
-    "password": "TeacherPass123!",
+    "role": "teacher",
     "fullName": "Mr. David Clark",
-    "phone": "+1234567891",
-    "subjectSpecialization": "Mathematics & Science"
+    "workEmail": "teacher@school.edu",
+    "schoolName": "Greenwood High School",
+    "password": "TeacherPass123!",
+    "confirmPassword": "TeacherPass123!",
+    "termsAccepted": true
   }
   ```
 - **Success Response (201 Created)**:
@@ -119,7 +127,7 @@ This document provides a comprehensive reference for all HTTP endpoints exposed 
     "message": "Teacher registration successful. A 6-digit verification code has been sent to your email.",
     "user": {
       "id": "d2e8b379-7e9f-5b7d-8520-a64fc016692c",
-      "email": "teacher@example.com",
+      "email": "teacher@school.edu",
       "role": "TEACHER",
       "accountStatus": "PENDING_VERIFICATION",
       "isEmailVerified": false,
@@ -127,14 +135,15 @@ This document provides a comprehensive reference for all HTTP endpoints exposed 
       "createdAt": "2026-09-23T11:00:00.000Z",
       "profile": {
         "fullName": "Mr. David Clark",
-        "phone": "+1234567891",
-        "subjectSpecialization": "Mathematics & Science"
+        "schoolName": "Greenwood High School",
+        "phone": null,
+        "subjectSpecialization": null
       }
     }
   }
   ```
 - **Error Responses**:
-  - `400 Bad Request`: Validation failure.
+  - `400 Bad Request`: Validation failure (passwords do not match, termsAccepted is not true, invalid email, weak password).
   - `409 Conflict`: Email already exists.
 
 ---

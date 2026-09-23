@@ -68,10 +68,14 @@ const collection = {
               mode: "raw",
               raw: JSON.stringify(
                 {
-                  email: "parent@example.com",
-                  password: "Password123!",
+                  role: "parent",
                   fullName: "Sarah Johnson",
-                  phone: "+1234567890"
+                  email: "parent@example.com",
+                  schoolName: "Greenwood High School",
+                  studentCode: "STU-88392",
+                  password: "Password123!",
+                  confirmPassword: "Password123!",
+                  termsAccepted: true
                 },
                 null,
                 2
@@ -106,11 +110,13 @@ const collection = {
               mode: "raw",
               raw: JSON.stringify(
                 {
-                  email: "teacher@example.com",
-                  password: "TeacherPass123!",
+                  role: "teacher",
                   fullName: "Mr. David Clark",
-                  phone: "+1234567891",
-                  subjectSpecialization: "Mathematics & Science"
+                  workEmail: "teacher@school.edu",
+                  schoolName: "Greenwood High School",
+                  password: "TeacherPass123!",
+                  confirmPassword: "TeacherPass123!",
+                  termsAccepted: true
                 },
                 null,
                 2

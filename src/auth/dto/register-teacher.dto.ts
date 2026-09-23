@@ -1,6 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
+  Equals,
+  IsBoolean,
   IsEmail,
   IsNotEmpty,
   IsOptional,
@@ -10,11 +12,32 @@ import {
 } from 'class-validator';
 
 export class RegisterTeacherDto {
-  @ApiProperty({ example: 'teacher@example.com' })
+  @ApiPropertyOptional({ example: 'teacher' })
+  @IsOptional()
+  @IsString()
+  role?: string;
+
+  @ApiProperty({ example: 'Mr. David Clark' })
+  @IsString()
+  @IsNotEmpty({ message: 'Full name is required' })
+  fullName!: string;
+
+  @ApiProperty({ example: 'teacher@school.edu' })
   @Transform(({ value }: { value: string }) => value?.trim().toLowerCase())
+  @IsEmail({}, { message: 'Invalid work email address' })
+  @IsNotEmpty({ message: 'Work email is required' })
+  workEmail!: string;
+
+  @ApiPropertyOptional({ example: 'teacher@school.edu' })
+  @Transform(({ value }: { value: string }) => value?.trim().toLowerCase())
+  @IsOptional()
   @IsEmail({}, { message: 'Invalid email address' })
-  @IsNotEmpty({ message: 'Email is required' })
-  email!: string;
+  email?: string;
+
+  @ApiProperty({ example: 'Oakridge International Academy' })
+  @IsString()
+  @IsNotEmpty({ message: 'School name is required' })
+  schoolName!: string;
 
   @ApiProperty({ example: 'T@acherPass123', minLength: 8 })
   @IsString()
@@ -24,10 +47,15 @@ export class RegisterTeacherDto {
   })
   password!: string;
 
-  @ApiProperty({ example: 'Mr. David Clark' })
+  @ApiProperty({ example: 'T@acherPass123', minLength: 8 })
   @IsString()
-  @IsNotEmpty({ message: 'Full name is required' })
-  fullName!: string;
+  @IsNotEmpty({ message: 'Confirm password is required' })
+  confirmPassword!: string;
+
+  @ApiProperty({ example: true })
+  @IsBoolean({ message: 'termsAccepted must be a boolean' })
+  @Equals(true, { message: 'Terms and conditions must be accepted' })
+  termsAccepted!: boolean;
 
   @ApiPropertyOptional({ example: '+1234567891' })
   @IsOptional()

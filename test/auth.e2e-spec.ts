@@ -136,7 +136,11 @@ describe('Authentication (e2e)', () => {
         .send({
           email: 'invalid@example.com',
           password: 'short',
+          confirmPassword: 'short',
           fullName: 'Test Parent',
+          schoolName: 'Greenwood High',
+          studentCode: 'STU-001',
+          termsAccepted: true,
         });
 
       expect(res.status).toBe(400);
@@ -149,14 +153,39 @@ describe('Authentication (e2e)', () => {
       );
     });
 
+    it('POST /api/auth/parent/register - fails when terms are not accepted', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/api/auth/parent/register')
+        .send({
+          email: 'terms@example.com',
+          password: 'SecurePassword123!',
+          confirmPassword: 'SecurePassword123!',
+          fullName: 'Test Parent',
+          schoolName: 'Greenwood High',
+          studentCode: 'STU-001',
+          termsAccepted: false,
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toEqual(
+        expect.arrayContaining([
+          expect.stringContaining('Terms and conditions must be accepted'),
+        ]),
+      );
+    });
+
     it('POST /api/auth/parent/register - successfully registers parent', async () => {
       const res = await request(app.getHttpServer())
         .post('/api/auth/parent/register')
         .send({
-          email: 'validparent@example.com',
-          password: 'SecurePassword123!',
+          role: 'parent',
           fullName: 'Sarah Connor',
-          phone: '+1234567890',
+          email: 'validparent@example.com',
+          schoolName: 'West High School',
+          studentCode: 'STU-12345',
+          password: 'SecurePassword123!',
+          confirmPassword: 'SecurePassword123!',
+          termsAccepted: true,
         });
 
       expect(res.status).toBe(201);
@@ -186,10 +215,13 @@ describe('Authentication (e2e)', () => {
       const res = await request(app.getHttpServer())
         .post('/api/auth/teacher/register')
         .send({
-          email: 'validteacher@example.com',
-          password: 'TeacherPassword123!',
+          role: 'teacher',
           fullName: 'Professor Charles',
-          subjectSpecialization: 'Mathematics',
+          workEmail: 'validteacher@example.com',
+          schoolName: 'Xavier Academy',
+          password: 'TeacherPassword123!',
+          confirmPassword: 'TeacherPassword123!',
+          termsAccepted: true,
         });
 
       expect(res.status).toBe(201);

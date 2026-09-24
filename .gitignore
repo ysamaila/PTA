@@ -51,3 +51,10 @@ scratch
 .windsurf/
 skills-lock.json
 
+# Local Architecture & Model Specifications
+BACKEND_DATA_MODELS.md
+PRD_Final.md
+PRD*.md
+
+
+

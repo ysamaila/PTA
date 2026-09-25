@@ -11,6 +11,13 @@ enum Role {
   PARENT
   TEACHER
   ADMIN
+  STUDENT
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
 }
 
 enum AccountStatus {
@@ -29,20 +36,26 @@ enum VerificationType {
 model User {
   id                String             @id @default(uuid())
   email             String             @unique
-  passwordHash      String
+  phoneNumber       String?
+  passwordHash      String             @default("")
+
   role              Role
   accountStatus     AccountStatus      @default(PENDING_VERIFICATION)
   isEmailVerified   Boolean            @default(false)
   emailVerifiedAt   DateTime?
   termsAccepted     Boolean            @default(true)
   termsAcceptedAt   DateTime?          @default(now())
+  profileImageUrl   String?
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 
-  parentProfile     ParentProfile?
-  teacherProfile    TeacherProfile?
-  verificationCodes VerificationCode[]
-  refreshTokens     RefreshToken[]
+  parentProfile      ParentProfile?
+  teacherProfile     TeacherProfile?
+  studentProfile     Student?
+  studentParentLinks StudentParentLink[]
+  preferences        UserPreferences?
+  verificationCodes  VerificationCode[]
+  refreshTokens      RefreshToken[]
 
   @@index([email])
   @@index([role])
@@ -66,18 +79,79 @@ model ParentProfile {
 }
 
 model TeacherProfile {
-  id                    String   @id @default(uuid())
-  userId                String   @unique
+  id                    String    @id @default(uuid())
+  userId                String    @unique
   fullName              String
   schoolName            String
   phone                 String?
   subjectSpecialization String?
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  assignedGrade         String    @default("Grade 5")
+  roomNumber            String    @default("Room 201")
+  studentCapacity       Int       @default(35)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  students Student[]
+
+  @@map("teacher_profiles")
+}
+
+model Student {
+  id               String    @id @default(uuid())
+  userId           String?   @unique
+  studentCode      String    @unique
+  firstName        String
+  lastName         String
+  dateOfBirth      DateTime
+  gender           Gender    @default(OTHER)
+  grade            String
+  room             String
+  avatarUrl        String?
+  accessPinHash    String
+  primaryTeacherId String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  user           User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
+  primaryTeacher TeacherProfile?     @relation(fields: [primaryTeacherId], references: [id], onDelete: SetNull)
+  parentLinks    StudentParentLink[]
+
+  @@index([studentCode])
+  @@index([primaryTeacherId])
+  @@map("students")
+}
+
+model StudentParentLink {
+  id               String   @id @default(uuid())
+  studentId        String
+  parentUserId     String
+  relationshipType String   @default("Parent")
+  isPrimaryContact Boolean  @default(false)
+  linkedAt         DateTime @default(now())
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  parent  User    @relation(fields: [parentUserId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, parentUserId])
+  @@index([parentUserId])
+  @@index([studentId])
+  @@map("student_parent_links")
+}
+
+model UserPreferences {
+  id                       String   @id @default(uuid())
+  userId                   String   @unique
+  pushNotificationsEnabled Boolean  @default(true)
+  soundEnabled             Boolean  @default(true)
+  darkModeEnabled          Boolean  @default(false)
+  autoSyncEnabled          Boolean  @default(true)
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@map("teacher_profiles")
+  @@map("user_preferences")
 }
 
 model VerificationCode {
@@ -97,13 +171,13 @@ model VerificationCode {
 }
 
 model RefreshToken {
-  id                 String    @id @default(uuid())
-  userId             String
-  tokenHash          String
-  expiresAt          DateTime
-  isRevoked          Boolean   @default(false)
-  replacedByTokenId  String?
-  createdAt          DateTime  @default(now())
+  id                String   @id @default(uuid())
+  userId            String
+  tokenHash         String
+  expiresAt         DateTime
+  isRevoked         Boolean  @default(false)
+  replacedByTokenId String?
+  createdAt         DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

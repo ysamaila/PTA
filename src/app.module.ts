@@ -8,6 +8,8 @@ import { AppService } from './app.service.js';
 import { PrismaModule } from './database/prisma.module.js';
 import { MailModule } from './mail/mail.module.js';
 import { AuthModule } from './auth/auth.module.js';
+import { ParentsModule } from './parents/parents.module.js';
+import { UsersModule } from './users/users.module.js';
 import { KeepAliveModule } from './tasks/keep-alive.module.js';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter.js';
 
@@ -27,8 +29,12 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter.js';
     PrismaModule,
     MailModule,
     AuthModule,
+    ParentsModule,
+    UsersModule,
     KeepAliveModule,
   ],
+
+
   controllers: [AppController],
   providers: [
     AppService,

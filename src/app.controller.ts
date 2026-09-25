@@ -1,12 +1,21 @@
 import { Controller, Get } from '@nestjs/common';
-import { AppService } from './app.service';
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { AppService } from './app.service.js';
+import type { AppDetails } from './app.service.js';
 
+@ApiTags('Root')
 @Controller()
 export class AppController {
   constructor(private readonly appService: AppService) {}
 
   @Get()
-  getHello(): string {
-    return this.appService.getHello();
+  @ApiOperation({ summary: 'Get application metadata and system status' })
+  @ApiResponse({
+    status: 200,
+    description: 'Application metadata and system status',
+  })
+  getAppDetails(): AppDetails {
+    return this.appService.getAppDetails();
   }
 }
+

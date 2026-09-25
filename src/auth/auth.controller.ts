@@ -24,7 +24,9 @@ import { RefreshTokenDto } from './dto/refresh-token.dto.js';
 import { ForgotPasswordDto } from './dto/forgot-password.dto.js';
 import { ResetPasswordDto } from './dto/reset-password.dto.js';
 import { ChangePasswordDto } from './dto/change-password.dto.js';
+import { LoginStudentDto } from './dto/login-student.dto.js';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard.js';
+
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 
 @ApiTags('Authentication')
@@ -157,6 +159,22 @@ export class AuthController {
   async loginAdmin(@Body() dto: LoginDto) {
     return this.authService.loginAdmin(dto);
   }
+
+  @Post('student/login')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Log in as a student using Student ID and PIN' })
+  @ApiResponse({
+    status: 200,
+    description: 'Login successful, returns tokens and student profile',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Invalid student ID or PIN',
+  })
+  async loginStudent(@Body() dto: LoginStudentDto) {
+    return this.authService.loginStudent(dto);
+  }
+
 
   @Post('refresh')
   @HttpCode(HttpStatus.OK)

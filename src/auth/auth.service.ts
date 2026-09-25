@@ -20,6 +20,7 @@ import { ResendCodeDto } from './dto/resend-code.dto.js';
 import { ForgotPasswordDto } from './dto/forgot-password.dto.js';
 import { ResetPasswordDto } from './dto/reset-password.dto.js';
 import { ChangePasswordDto } from './dto/change-password.dto.js';
+import { LoginStudentDto } from './dto/login-student.dto.js';
 import {
   Role,
   AccountStatus,
@@ -40,6 +41,11 @@ export interface SafeUser {
     studentCode?: string | null;
     phone?: string | null;
     subjectSpecialization?: string | null;
+    assignedGrade?: string | null;
+    roomNumber?: string | null;
+    studentCapacity?: number | null;
+    grade?: string | null;
+    room?: string | null;
   } | null;
 }
 
@@ -51,6 +57,7 @@ export interface AuthResult {
 interface UserWithRelations {
   id: string;
   email: string;
+
   role: Role;
   accountStatus: AccountStatus;
   isEmailVerified: boolean;
@@ -67,6 +74,20 @@ interface UserWithRelations {
     schoolName?: string | null;
     phone?: string | null;
     subjectSpecialization?: string | null;
+    assignedGrade?: string | null;
+    roomNumber?: string | null;
+    studentCapacity?: number | null;
+  } | null;
+  studentProfile?: {
+    firstName: string;
+    lastName: string;
+    studentCode: string;
+    grade: string;
+    room: string;
+    primaryTeacher?: {
+      schoolName?: string | null;
+      fullName?: string | null;
+    } | null;
   } | null;
 }
 
@@ -100,6 +121,19 @@ export class AuthService {
         phone: user.teacherProfile.phone ?? null,
         subjectSpecialization:
           user.teacherProfile.subjectSpecialization ?? null,
+        assignedGrade: user.teacherProfile.assignedGrade ?? null,
+        roomNumber: user.teacherProfile.roomNumber ?? null,
+        studentCapacity: user.teacherProfile.studentCapacity ?? null,
+      };
+    } else if (user.studentProfile) {
+      profileData = {
+        fullName: `${user.studentProfile.firstName} ${user.studentProfile.lastName}`,
+        schoolName: user.studentProfile.primaryTeacher?.schoolName ?? null,
+        studentCode: user.studentProfile.studentCode,
+        grade: user.studentProfile.grade,
+        room: user.studentProfile.room,
+        phone: null,
+        subjectSpecialization: null,
       };
     }
 
@@ -114,6 +148,7 @@ export class AuthService {
       profile: profileData,
     };
   }
+
 
   async registerParent(
     dto: RegisterParentDto,
@@ -547,10 +582,76 @@ export class AuthService {
     };
   }
 
+  async loginStudent(dto: LoginStudentDto): Promise<AuthResult> {
+    const student = await this.prisma.student.findUnique({
+      where: { studentCode: dto.studentCode.trim() },
+      include: {
+        user: true,
+        primaryTeacher: true,
+      },
+    });
+
+    if (!student || !student.user) {
+      throw new UnauthorizedException('Invalid student ID or PIN');
+    }
+
+    const isPinValid = await argon2.verify(student.accessPinHash, dto.pin);
+    if (!isPinValid) {
+      throw new UnauthorizedException('Invalid student ID or PIN');
+    }
+
+    if (student.user.accountStatus === AccountStatus.SUSPENDED) {
+      throw new ForbiddenException('Your student account has been suspended');
+    }
+
+    if (student.user.accountStatus === AccountStatus.DISABLED) {
+      throw new ForbiddenException('Your student account has been disabled');
+    }
+
+    const email =
+      student.user.email ??
+      `${student.studentCode.toLowerCase()}@student.afrotech.edu`;
+
+    const tokens = await this.tokenService.generateTokens({
+      id: student.user.id,
+      email,
+      role: Role.STUDENT,
+      accountStatus: student.user.accountStatus,
+    });
+
+    return {
+      user: {
+        id: student.user.id,
+        email,
+        role: Role.STUDENT,
+        accountStatus: student.user.accountStatus,
+        isEmailVerified: student.user.isEmailVerified,
+        emailVerifiedAt: student.user.emailVerifiedAt,
+        createdAt: student.user.createdAt,
+        profile: {
+          fullName: `${student.firstName} ${student.lastName}`,
+          schoolName: student.primaryTeacher?.schoolName ?? null,
+          studentCode: student.studentCode,
+          grade: student.grade,
+          room: student.room,
+          phone: null,
+          subjectSpecialization: null,
+        },
+      },
+      tokens,
+    };
+  }
+
   async getMe(userId: string): Promise<SafeUser> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      include: { parentProfile: true, teacherProfile: true },
+      include: {
+        parentProfile: true,
+        teacherProfile: true,
+        studentProfile: {
+          include: { primaryTeacher: true },
+        },
+      },
     });
 
     if (!user) {
@@ -559,6 +660,7 @@ export class AuthService {
 
     return this.sanitizeUser(user);
   }
+
 
   async refreshToken(refreshToken: string): Promise<TokenResponse> {
     return this.tokenService.rotateRefreshToken(refreshToken);

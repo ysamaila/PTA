@@ -30,7 +30,7 @@
 - Consumes: Existing `User`, `ParentProfile`, `TeacherProfile` models.
 - Produces: Updated `Role` enum (`STUDENT`), `Gender` enum, `Student`, `StudentParentLink`, `UserPreferences` models, and updated relations.
 
-- [ ] **Step 1: Update Prisma schema with Student, StudentParentLink, UserPreferences, and Gender**
+- [x] **Step 1: Update Prisma schema with Student, StudentParentLink, UserPreferences, and Gender**
 
 Update `prisma/schema.prisma`:
 ```prisma
@@ -153,7 +153,7 @@ model UserPreferences {
 }
 ```
 
-- [ ] **Step 2: Generate Prisma client and push changes to database**
+- [x] **Step 2: Generate Prisma client and push changes to database**
 
 Run:
 ```powershell
@@ -162,12 +162,12 @@ npx prisma db push
 ```
 Expected: Schema synchronized and Prisma Client regenerated successfully without errors.
 
-- [ ] **Step 3: Run existing test suite to ensure zero regressions**
+- [x] **Step 3: Run existing test suite to ensure zero regressions**
 
 Run: `npm test`
 Expected: All existing authentication and authorization tests pass.
 
-- [ ] **Step 4: Commit schema changes**
+- [x] **Step 4: Commit schema changes**
 
 ```bash
 git add prisma/schema.prisma generated/prisma
@@ -187,7 +187,7 @@ git commit -m "feat(db): add Student, StudentParentLink, UserPreferences models 
 - Consumes: Prisma models `User`, `TeacherProfile`, `Student`.
 - Produces: Default seeded records for `Miss Edith Robinson` and students `Divine Ekubor (06201)`, `Emma Wilson (06202)`, `Bryan Williams (06204)`.
 
-- [ ] **Step 1: Write seed script in `prisma/seed.ts`**
+- [x] **Step 1: Write seed script in `prisma/seed.ts`**
 
 ```typescript
 import { PrismaClient, Role, AccountStatus, Gender } from '../generated/prisma/client.js';
@@ -325,12 +325,12 @@ main()
   });
 ```
 
-- [ ] **Step 2: Execute seeding and verify records**
+- [x] **Step 2: Execute seeding and verify records**
 
 Run: `node prisma/seed.ts` (or `npx tsx prisma/seed.ts`)
 Expected: Seeding logs output and completes with exit code 0.
 
-- [ ] **Step 3: Commit seed script**
+- [x] **Step 3: Commit seed script**
 
 ```bash
 git add prisma/seed.ts
@@ -351,7 +351,7 @@ git commit -m "feat(seed): add prototype homeroom teacher and students seed"
 - Consumes: `studentCode`, `pin` via `LoginStudentDto`.
 - Produces: `AuthResult` with JWT access/refresh tokens and sanitized student user payload.
 
-- [ ] **Step 1: Write failing test in `src/auth/student-auth.spec.ts`**
+- [x] **Step 1: Write failing test in `src/auth/student-auth.spec.ts`**
 
 ```typescript
 import { Test, TestingModule } from '@nestjs/testing';
@@ -408,12 +408,12 @@ describe('AuthService - Student Login', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx jest src/auth/student-auth.spec.ts`
 Expected: FAIL with `authService.loginStudent is not a function`.
 
-- [ ] **Step 3: Create `LoginStudentDto`**
+- [x] **Step 3: Create `LoginStudentDto`**
 
 Create `src/auth/dto/login-student.dto.ts`:
 ```typescript
@@ -441,7 +441,7 @@ export class LoginStudentDto {
 }
 ```
 
-- [ ] **Step 4: Implement `loginStudent` in `AuthService` and add controller route**
+- [x] **Step 4: Implement `loginStudent` in `AuthService` and add controller route**
 
 In `src/auth/auth.service.ts`:
 ```typescript
@@ -507,12 +507,12 @@ async loginStudent(@Body() dto: LoginStudentDto): Promise<AuthResult> {
 }
 ```
 
-- [ ] **Step 5: Run tests and verify PASS**
+- [x] **Step 5: Run tests and verify PASS**
 
 Run: `npx jest src/auth/student-auth.spec.ts`
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/auth/dto/login-student.dto.ts src/auth/auth.service.ts src/auth/auth.controller.ts src/auth/student-auth.spec.ts
@@ -535,7 +535,7 @@ git commit -m "feat(auth): implement student login with studentCode and PIN"
 - Consumes: Authenticated `User` (Role `PARENT`), `studentCode`, `relationshipType`.
 - Produces: List of linked children with basic academic and attendance snapshot.
 
-- [ ] **Step 1: Write failing unit test in `src/parents/parents.service.spec.ts`**
+- [x] **Step 1: Write failing unit test in `src/parents/parents.service.spec.ts`**
 
 ```typescript
 import { Test, TestingModule } from '@nestjs/testing';
@@ -575,7 +575,7 @@ describe('ParentsService', () => {
 });
 ```
 
-- [ ] **Step 2: Create DTO `src/parents/dto/link-student.dto.ts`**
+- [x] **Step 2: Create DTO `src/parents/dto/link-student.dto.ts`**
 
 ```typescript
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -599,7 +599,7 @@ export class LinkStudentDto {
 }
 ```
 
-- [ ] **Step 3: Implement `ParentsService` and `ParentsController`**
+- [x] **Step 3: Implement `ParentsService` and `ParentsController`**
 
 `src/parents/parents.service.ts`:
 ```typescript
@@ -724,12 +724,12 @@ export class ParentsController {
 }
 ```
 
-- [ ] **Step 4: Register `ParentsModule` in `AppModule` and run unit tests**
+- [x] **Step 4: Register `ParentsModule` in `AppModule` and run unit tests**
 
 Run: `npx jest src/parents/parents.service.spec.ts`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/parents/ src/app.module.ts
@@ -752,7 +752,7 @@ git commit -m "feat(parents): implement multi-child linking and roster query end
 - Consumes: Authenticated user ID (any valid Role), `UpdateUserPreferencesDto`.
 - Produces: `UserPreferences` object.
 
-- [ ] **Step 1: Write test for Preferences in `src/users/users.service.spec.ts`**
+- [x] **Step 1: Write test for Preferences in `src/users/users.service.spec.ts`**
 
 ```typescript
 import { Test, TestingModule } from '@nestjs/testing';
@@ -799,7 +799,7 @@ describe('UsersService - Preferences', () => {
 });
 ```
 
-- [ ] **Step 2: Create DTO `src/users/dto/update-preferences.dto.ts`**
+- [x] **Step 2: Create DTO `src/users/dto/update-preferences.dto.ts`**
 
 ```typescript
 import { ApiPropertyOptional } from '@nestjs/swagger';
@@ -828,7 +828,7 @@ export class UpdateUserPreferencesDto {
 }
 ```
 
-- [ ] **Step 3: Implement `UsersService` and `UsersController`**
+- [x] **Step 3: Implement `UsersService` and `UsersController`**
 
 `src/users/users.service.ts`:
 ```typescript
@@ -903,12 +903,12 @@ export class UsersController {
 }
 ```
 
-- [ ] **Step 4: Register `UsersModule` and run tests**
+- [x] **Step 4: Register `UsersModule` and run tests**
 
 Run: `npx jest src/users/users.service.spec.ts`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/users/ src/app.module.ts
@@ -927,7 +927,7 @@ git commit -m "feat(users): add user preferences endpoints and module"
 - Consumes: All 4 persona auth endpoints (`/parent/*`, `/teacher/*`, `/admin/*`, `/student/*`), `/api/parents/students/link`, `/api/users/preferences`.
 - Produces: Complete terminal report showing green checks for all 4 personas and core identity flows.
 
-- [ ] **Step 1: Update `scripts/test-all-roles-flow.mjs` to include Student Login & Multi-Child Linking**
+- [x] **Step 1: Update `scripts/test-all-roles-flow.mjs` to include Student Login & Multi-Child Linking**
 
 Add assertions for:
 1. Student login with `06201` and PIN `1234` -> verify JWT and Student role.
@@ -935,12 +935,12 @@ Add assertions for:
 3. Parent fetches linked children -> asserts both children present.
 4. User updates preferences (`darkModeEnabled: true`) -> asserts persistence.
 
-- [ ] **Step 2: Run verification script**
+- [x] **Step 2: Run verification script**
 
 Run: `node scripts/test-all-roles-flow.mjs`
 Expected: All tests pass with exit code 0.
 
-- [ ] **Step 3: Commit verification test suite**
+- [x] **Step 3: Commit verification test suite**
 
 ```bash
 git add scripts/test-all-roles-flow.mjs

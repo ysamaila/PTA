@@ -2,6 +2,8 @@ import crypto from 'node:crypto';
 import http from 'node:http';
 import pg from 'pg';
 import dotenv from 'dotenv';
+import * as argon2 from 'argon2';
+
 
 dotenv.config();
 
@@ -144,9 +146,13 @@ async function runAllRolesFlow() {
 
   await query('DELETE FROM verification_codes');
   await query('DELETE FROM refresh_tokens');
+  await query('DELETE FROM student_parent_links');
+  await query('DELETE FROM students');
+  await query('DELETE FROM user_preferences');
   await query('DELETE FROM parent_profiles');
   await query('DELETE FROM teacher_profiles');
   await query('DELETE FROM users');
+
 
   const afterCount = await query('SELECT count(*)::int as count FROM users');
   if (afterCount.rows[0].count !== 0) {
@@ -468,13 +474,152 @@ async function runAllRolesFlow() {
     body: JSON.stringify({ email: parentEmail, password: resetPassword }),
   });
   if (parentResetLogin.status !== 200) throw new Error(`Login after reset failed: ${JSON.stringify(parentResetLogin.data)}`);
-  logSuccess(`Login with reset password succeeded!`);
   results.forgotPasswordFlow.loginWithResetPassword = true;
+  const activeParentToken = parentResetLogin.data.tokens.accessToken;
+
 
   // ==========================================
-  // PART 6: FINAL DATABASE INTEGRITY REPORT
+  // PART 5: ROLE 4 - STUDENT AUTHENTICATION FLOW
+  // ==========================================
+  banner('ROLE 4: STUDENT AUTHENTICATION VIA STUDENT ID & PIN');
+
+  logStep('5.0', 'Seeding Prototype Students (Divine Ekubor 06201, Emma Wilson 06202, Bryan Williams 06204)');
+  const teacherRow = await query('SELECT tp.id, tp."schoolName" FROM teacher_profiles tp JOIN users u ON u.id = tp."userId" WHERE u.email = $1', [teacherEmail]);
+  const primaryTeacherId = teacherRow.rows[0]?.id;
+  const pinHash = await argon2.hash('1234');
+  
+  const studentList = [
+    { code: '06201', first: 'Divine', last: 'Ekubor', dob: '2014-05-14', gender: 'MALE', grade: 'Grade 5', room: 'Room 201' },
+    { code: '06202', first: 'Emma', last: 'Wilson', dob: '2014-08-22', gender: 'FEMALE', grade: 'Grade 5', room: 'Room 201' },
+    { code: '06204', first: 'Bryan', last: 'Williams', dob: '2014-02-10', gender: 'MALE', grade: 'Grade 5', room: 'Room 201' },
+  ];
+
+  for (const s of studentList) {
+    const sUserId = crypto.randomUUID();
+    const sEmail = `${s.code.toLowerCase()}@student.afrotech.edu`;
+    await query(
+      `INSERT INTO users (id, email, "passwordHash", role, "accountStatus", "isEmailVerified", "emailVerifiedAt", "termsAccepted", "termsAcceptedAt", "createdAt", "updatedAt")
+       VALUES ($1, $2, '', 'STUDENT', 'ACTIVE', true, NOW(), true, NOW(), NOW(), NOW())`,
+      [sUserId, sEmail]
+    );
+    await query(
+      `INSERT INTO user_preferences (id, "userId", "pushNotificationsEnabled", "soundEnabled", "darkModeEnabled", "autoSyncEnabled", "createdAt", "updatedAt")
+       VALUES ($1, $2, true, true, false, true, NOW(), NOW())`,
+      [crypto.randomUUID(), sUserId]
+    );
+    await query(
+      `INSERT INTO students (id, "userId", "studentCode", "firstName", "lastName", "dateOfBirth", gender, grade, room, "accessPinHash", "primaryTeacherId", "createdAt", "updatedAt")
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())`,
+      [crypto.randomUUID(), sUserId, s.code, s.first, s.last, s.dob, s.gender, s.grade, s.room, pinHash, primaryTeacherId]
+    );
+  }
+  logSuccess(`3 prototype students seeded and assigned to Teacher Profile.`);
+
+  logStep('5.1', 'Student Login via Student ID [06201] and PIN [1234]');
+  const studentLoginRes = await requestJson(`${BASE_URL}/api/auth/student/login`, {
+    method: 'POST',
+    body: JSON.stringify({ studentCode: '06201', pin: '1234' }),
+  });
+  if (studentLoginRes.status !== 200) throw new Error(`Student login failed: ${JSON.stringify(studentLoginRes.data)}`);
+  logSuccess(`Student [Divine Ekubor - 06201] logged in successfully! Role: ${studentLoginRes.data.user.role}`);
+  
+  const studentAccessToken = studentLoginRes.data.tokens.accessToken;
+
+  logStep('5.2', 'Student Profile Verification (/api/auth/me)');
+  const studentMeRes = await requestJson(`${BASE_URL}/api/auth/me`, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${studentAccessToken}` },
+  });
+  if (studentMeRes.status !== 200) throw new Error(`Student /api/auth/me failed: ${JSON.stringify(studentMeRes.data)}`);
+  logSuccess(`Student profile verified: ${studentMeRes.data.profile.fullName} | Grade: ${studentMeRes.data.profile.grade} | Room: ${studentMeRes.data.profile.room}`);
+
+  logStep('5.3', 'Negative Test: Invalid PIN for Student [06201]');
+  const studentBadPin = await requestJson(`${BASE_URL}/api/auth/student/login`, {
+    method: 'POST',
+    body: JSON.stringify({ studentCode: '06201', pin: '0000' }),
+  });
+  if (studentBadPin.status !== 401) throw new Error(`Expected 401 for bad PIN, got: ${studentBadPin.status}`);
+  logSuccess(`Invalid PIN correctly rejected with 401 Unauthorized.`);
+
+  // ==========================================
+  // PART 6: MULTI-CHILD PARENT ROSTERING
+  // ==========================================
+  banner('PARENT MULTI-CHILD ROSTERING (LINKING STUDENTS)');
+
+  logStep('6.1', 'Parent links 1st Child [Emma Wilson - 06202]');
+  const linkChild1 = await requestJson(`${BASE_URL}/api/parents/students/link`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${activeParentToken}` },
+    body: JSON.stringify({
+      studentCode: '06202',
+      relationshipType: 'Mother',
+      isPrimaryContact: true,
+    }),
+  });
+  if (linkChild1.status !== 201) throw new Error(`Link child 1 failed: ${JSON.stringify(linkChild1.data)}`);
+  logSuccess(`Linked child: ${linkChild1.data.student.firstName} ${linkChild1.data.student.lastName} [06202]`);
+
+  logStep('6.2', 'Parent links 2nd Child [Bryan Williams - 06204]');
+  const linkChild2 = await requestJson(`${BASE_URL}/api/parents/students/link`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${activeParentToken}` },
+    body: JSON.stringify({
+      studentCode: '06204',
+      relationshipType: 'Guardian',
+      isPrimaryContact: false,
+    }),
+  });
+  if (linkChild2.status !== 201) throw new Error(`Link child 2 failed: ${JSON.stringify(linkChild2.data)}`);
+  logSuccess(`Linked child: ${linkChild2.data.student.firstName} ${linkChild2.data.student.lastName} [06204]`);
+
+  logStep('6.3', 'Negative Test: Prevent duplicate linking of same child');
+  const dupLink = await requestJson(`${BASE_URL}/api/parents/students/link`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${activeParentToken}` },
+    body: JSON.stringify({ studentCode: '06202' }),
+  });
+  if (dupLink.status !== 409) throw new Error(`Expected 409 Conflict for duplicate link, got: ${dupLink.status}`);
+  logSuccess(`Duplicate linking correctly rejected with 409 Conflict.`);
+
+  logStep('6.4', 'Parent fetches all linked children roster (/api/parents/students)');
+  const linkedRoster = await requestJson(`${BASE_URL}/api/parents/students`, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${activeParentToken}` },
+  });
+  if (linkedRoster.status !== 200) throw new Error(`Get linked students failed: ${JSON.stringify(linkedRoster.data)}`);
+  logSuccess(`Parent has ${linkedRoster.data.length} linked children: ${linkedRoster.data.map(c => `${c.student.fullName} [${c.student.studentCode}]`).join(', ')}`);
+
+  // ==========================================
+  // PART 7: USER PREFERENCES FLOW
+  // ==========================================
+  banner('USER PREFERENCES (DARK MODE, NOTIFICATIONS, SOUND)');
+
+  logStep('7.1', 'Fetch default preferences (/api/users/preferences)');
+  const getPrefRes = await requestJson(`${BASE_URL}/api/users/preferences`, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${activeParentToken}` },
+  });
+  if (getPrefRes.status !== 200) throw new Error(`Get preferences failed: ${JSON.stringify(getPrefRes.data)}`);
+  logSuccess(`Default preferences: Push=${getPrefRes.data.pushNotificationsEnabled}, Sound=${getPrefRes.data.soundEnabled}, DarkMode=${getPrefRes.data.darkModeEnabled}`);
+
+  logStep('7.2', 'Update preferences to Dark Mode & muted sound');
+  const patchPrefRes = await requestJson(`${BASE_URL}/api/users/preferences`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${activeParentToken}` },
+    body: JSON.stringify({
+      darkModeEnabled: true,
+      soundEnabled: false,
+    }),
+  });
+  if (patchPrefRes.status !== 200) throw new Error(`Patch preferences failed: ${JSON.stringify(patchPrefRes.data)}`);
+
+  logSuccess(`Updated preferences: DarkMode=${patchPrefRes.data.darkModeEnabled}, Sound=${patchPrefRes.data.soundEnabled}`);
+
+  // ==========================================
+  // PART 8: FINAL DATABASE INTEGRITY REPORT
   // ==========================================
   banner('FINAL DATABASE & SECURITY REPORT');
+
 
   const finalUsers = await query(`
     SELECT email, role, "accountStatus", "isEmailVerified", "emailVerifiedAt" 
@@ -489,7 +634,8 @@ async function runAllRolesFlow() {
   console.log(`Total Verification Codes Logged: ${codesCount.rows[0].count}`);
   console.log(`Active Refresh Tokens in DB:    ${tokensCount.rows[0].count}\n`);
 
-  console.log(`${colors.green}${colors.bright}ALL 3 ROLES (PARENT, TEACHER, ADMIN) SUCCESSFULLY TESTED THROUGH COMPLETE AUTH LIFECYCLES!${colors.reset}`);
+  console.log(`${colors.green}${colors.bright}ALL 4 PERSONAS (PARENT, TEACHER, ADMIN, STUDENT) SUCCESSFULLY TESTED THROUGH COMPLETE AUTH LIFECYCLES!${colors.reset}`);
+
 
   await pool.end();
 }

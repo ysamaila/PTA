@@ -29,7 +29,7 @@ import {
 
 export interface SafeUser {
   id: string;
-  email: string | null;
+  email: string;
   role: Role;
   accountStatus: AccountStatus;
   isEmailVerified: boolean;
@@ -56,7 +56,8 @@ export interface AuthResult {
 
 interface UserWithRelations {
   id: string;
-  email: string | null;
+  email: string;
+
   role: Role;
   accountStatus: AccountStatus;
   isEmailVerified: boolean;

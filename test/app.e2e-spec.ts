@@ -23,6 +23,12 @@ describe('AppController (e2e)', () => {
     return request(app.getHttpServer())
       .get('/')
       .expect(200)
-      .expect('Hello World!');
+      .expect((res) => {
+        expect(res.body).toHaveProperty('name', 'ConnectEd API');
+        expect(res.body).toHaveProperty('status', 'active');
+        expect(res.body).toHaveProperty('version');
+        expect(res.body).toHaveProperty('docs', '/api/docs');
+        expect(res.body).toHaveProperty('timestamp');
+      });
   });
 });

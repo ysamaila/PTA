@@ -360,6 +360,33 @@ async function runAllRolesFlow() {
   logSuccess(`Teacher login with new password succeeded!`);
   results.teacher.newPasswordLogin = true;
 
+  const teacherAccessToken = teacherNewLogin.data.tokens.accessToken;
+
+  logStep('2.9', 'Teacher Enrolls a New Student (POST /api/teachers/students)');
+  const enrollStudentRes = await requestJson(`${BASE_URL}/api/teachers/students`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${teacherAccessToken}` },
+    body: JSON.stringify({
+      firstName: 'Khadija',
+      lastName: 'Bello',
+      studentCode: '06209',
+      dateOfBirth: '2014-07-19',
+      gender: 'FEMALE',
+      pin: '1234',
+    }),
+  });
+  if (enrollStudentRes.status !== 201) throw new Error(`Teacher student enrollment failed: ${JSON.stringify(enrollStudentRes.data)}`);
+  logSuccess(`Teacher enrolled: ${enrollStudentRes.data.student.fullName} [Code: ${enrollStudentRes.data.student.studentCode}] -> Assigned to: ${enrollStudentRes.data.student.teacherName}`);
+
+  logStep('2.10', 'Teacher Fetches Classroom Roster (GET /api/teachers/students)');
+  const teacherRosterRes = await requestJson(`${BASE_URL}/api/teachers/students`, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${teacherAccessToken}` },
+  });
+  if (teacherRosterRes.status !== 200) throw new Error(`Teacher get roster failed: ${JSON.stringify(teacherRosterRes.data)}`);
+  logSuccess(`Classroom roster: ${teacherRosterRes.data.teacher.enrolledCount}/${teacherRosterRes.data.teacher.studentCapacity} enrolled: ${teacherRosterRes.data.students.map(s => `${s.fullName} [${s.studentCode}]`).join(', ')}`);
+
+
   // ==========================================
   // PART 4: ADMIN FLOW
   // ==========================================

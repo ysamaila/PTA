@@ -643,7 +643,113 @@ async function runAllRolesFlow() {
   logSuccess(`Updated preferences: DarkMode=${patchPrefRes.data.darkModeEnabled}, Sound=${patchPrefRes.data.soundEnabled}`);
 
   // ==========================================
-  // PART 8: FINAL DATABASE INTEGRITY REPORT
+  // PART 8: DAILY ATTENDANCE TRACKING FLOW
+  // ==========================================
+  banner('DAILY ATTENDANCE TRACKING (BATCH ROLL CALL & RBAC METRICS)');
+
+  const studentDbRows = await query(`SELECT id, "studentCode", "firstName", "lastName" FROM students WHERE "studentCode" IN ('06201', '06202', '06204')`);
+  const studentMap = {};
+  studentDbRows.rows.forEach((r) => { studentMap[r.studentCode] = r; });
+
+  const rollCallDate = '2026-09-26';
+
+  logStep('8.1', 'Teacher Marks Batch Roll Call for Classroom (POST /api/attendance/mark)');
+  const markRollCallRes = await requestJson(`${BASE_URL}/api/attendance/mark`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${teacherNewAccessToken}` },
+    body: JSON.stringify({
+      date: rollCallDate,
+      records: [
+        {
+          studentId: studentMap['06201'].id,
+          status: 'PRESENT',
+          notes: 'On time, participated actively',
+        },
+        {
+          studentId: studentMap['06202'].id,
+          status: 'LATE',
+          notes: 'Arrived 10 minutes late',
+        },
+        {
+          studentId: studentMap['06204'].id,
+          status: 'ABSENT',
+          notes: 'Unexcused absence',
+        },
+      ],
+    }),
+  });
+  if (markRollCallRes.status !== 200) throw new Error(`Mark roll call failed: ${JSON.stringify(markRollCallRes.data)}`);
+  logSuccess(`Classroom roll call marked for 3 students. Count: ${markRollCallRes.data.count}`);
+
+  logStep('8.2', 'Teacher Re-Marks Roll Call (Atomic Upsert Idempotency)');
+  const remarkRes = await requestJson(`${BASE_URL}/api/attendance/mark`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${teacherNewAccessToken}` },
+    body: JSON.stringify({
+      date: rollCallDate,
+      records: [
+        {
+          studentId: studentMap['06204'].id,
+          status: 'EXCUSED',
+          notes: 'Doctor note provided by guardian',
+        },
+      ],
+    }),
+  });
+  if (remarkRes.status !== 200) throw new Error(`Re-marking roll call failed: ${JSON.stringify(remarkRes.data)}`);
+  logSuccess(`Roll call update successful. Student [06204] updated to EXCUSED.`);
+
+  logStep('8.3', 'Teacher Retrieves Live Classroom Attendance & Rates (GET /api/attendance/class)');
+  const classAttendanceRes = await requestJson(`${BASE_URL}/api/attendance/class?date=${rollCallDate}`, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${teacherNewAccessToken}` },
+  });
+  if (classAttendanceRes.status !== 200) throw new Error(`Get class attendance failed: ${JSON.stringify(classAttendanceRes.data)}`);
+  const classSummary = classAttendanceRes.data.summary;
+  logSuccess(`Class Summary on ${rollCallDate}: Total=${classSummary.total}, Present=${classSummary.percentages.PRESENT}%, Late=${classSummary.percentages.LATE}%, Excused=${classSummary.percentages.EXCUSED}%, Absent=${classSummary.percentages.ABSENT}%`);
+
+  logStep('8.4', 'Parent Views Linked Child Attendance (GET /api/attendance/student/:id)');
+  const parentViewRes = await requestJson(`${BASE_URL}/api/attendance/student/${studentMap['06202'].id}`, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${activeParentToken}` },
+  });
+  if (parentViewRes.status !== 200) throw new Error(`Parent view attendance failed: ${JSON.stringify(parentViewRes.data)}`);
+  logSuccess(`Parent verified attendance for linked child [Emma Wilson]: Status=${parentViewRes.data.records[0].status}, Notes="${parentViewRes.data.records[0].notes}"`);
+
+  logStep('8.5', 'Negative Security Test: Parent Views Unlinked Student (Must reject with 403)');
+  const parentUnlinkedRes = await requestJson(`${BASE_URL}/api/attendance/student/${studentMap['06201'].id}`, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${activeParentToken}` },
+  });
+  if (parentUnlinkedRes.status !== 403) throw new Error(`Expected 403 for unlinked student attendance view, got: ${parentUnlinkedRes.status}`);
+  logSecurity(`Security verified: Parent view of unlinked student rejected with 403 Forbidden.`);
+
+  logStep('8.6', 'Student Views Their Own Attendance (GET /api/attendance/student/:id)');
+  const studentSelfRes = await requestJson(`${BASE_URL}/api/attendance/student/${studentMap['06201'].id}`, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${studentAccessToken}` },
+  });
+  if (studentSelfRes.status !== 200) throw new Error(`Student self attendance view failed: ${JSON.stringify(studentSelfRes.data)}`);
+  logSuccess(`Student [Divine Ekubor] retrieved own attendance: Status=${studentSelfRes.data.records[0].status}`);
+
+  logStep('8.7', 'Negative Security Test: Student Views Classmate Attendance (Must reject with 403)');
+  const studentOtherRes = await requestJson(`${BASE_URL}/api/attendance/student/${studentMap['06202'].id}`, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${studentAccessToken}` },
+  });
+  if (studentOtherRes.status !== 403) throw new Error(`Expected 403 for student viewing classmate, got: ${studentOtherRes.status}`);
+  logSecurity(`Security verified: Student viewing classmate attendance rejected with 403 Forbidden.`);
+
+  logStep('8.8', 'Admin Platform-Wide Attendance View');
+  const adminViewRes = await requestJson(`${BASE_URL}/api/attendance/student/${studentMap['06201'].id}`, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${adminAccessToken}` },
+  });
+  if (adminViewRes.status !== 200) throw new Error(`Admin attendance view failed: ${JSON.stringify(adminViewRes.data)}`);
+  logSuccess(`Admin platform-wide attendance access verified for student [06201].`);
+
+  // ==========================================
+  // PART 9: FINAL DATABASE INTEGRITY REPORT
   // ==========================================
   banner('FINAL DATABASE & SECURITY REPORT');
 

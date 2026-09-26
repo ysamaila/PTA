@@ -23,6 +23,9 @@ async function cleanDatabase() {
   
   await query(`
     TRUNCATE TABLE 
+      grade_assessments,
+      subjects,
+      academic_sessions,
       attendance_records,
       student_parent_links,
       user_preferences,
@@ -43,6 +46,9 @@ async function cleanDatabase() {
       (SELECT COUNT(*) FROM parent_profiles) as parents_count,
       (SELECT COUNT(*) FROM student_parent_links) as links_count,
       (SELECT COUNT(*) FROM attendance_records) as attendance_count,
+      (SELECT COUNT(*) FROM grade_assessments) as grades_count,
+      (SELECT COUNT(*) FROM subjects) as subjects_count,
+      (SELECT COUNT(*) FROM academic_sessions) as sessions_count,
       (SELECT COUNT(*) FROM user_preferences) as preferences_count,
       (SELECT COUNT(*) FROM verification_codes) as codes_count,
       (SELECT COUNT(*) FROM refresh_tokens) as tokens_count;

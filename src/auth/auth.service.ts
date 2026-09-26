@@ -178,39 +178,42 @@ export class AuthService {
     const codeHash = this.tokenService.hashToken(code);
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-    const user = await this.prisma.$transaction(async (tx) => {
-      const createdUser = await tx.user.create({
-        data: {
-          email: normalizedEmail,
-          passwordHash,
-          role: Role.PARENT,
-          accountStatus: AccountStatus.PENDING_VERIFICATION,
-          isEmailVerified: false,
-          termsAccepted: dto.termsAccepted ?? true,
-          termsAcceptedAt: new Date(),
-          parentProfile: {
-            create: {
-              fullName: dto.fullName,
-              schoolName: dto.schoolName,
-              studentCode: dto.studentCode,
-              phone: dto.phone,
+    const user = await this.prisma.$transaction(
+      async (tx) => {
+        const createdUser = await tx.user.create({
+          data: {
+            email: normalizedEmail,
+            passwordHash,
+            role: Role.PARENT,
+            accountStatus: AccountStatus.PENDING_VERIFICATION,
+            isEmailVerified: false,
+            termsAccepted: dto.termsAccepted ?? true,
+            termsAcceptedAt: new Date(),
+            parentProfile: {
+              create: {
+                fullName: dto.fullName,
+                schoolName: dto.schoolName,
+                studentCode: dto.studentCode,
+                phone: dto.phone,
+              },
+            },
+            verificationCodes: {
+              create: {
+                codeHash,
+                type: VerificationType.EMAIL_VERIFICATION,
+                expiresAt,
+              },
             },
           },
-          verificationCodes: {
-            create: {
-              codeHash,
-              type: VerificationType.EMAIL_VERIFICATION,
-              expiresAt,
-            },
+          include: {
+            parentProfile: true,
           },
-        },
-        include: {
-          parentProfile: true,
-        },
-      });
+        });
 
-      return createdUser;
-    });
+        return createdUser;
+      },
+      { timeout: 30000, maxWait: 15000 },
+    );
 
     await this.mailService.sendVerificationCode(user.email, dto.fullName, code);
 
@@ -253,39 +256,42 @@ export class AuthService {
     const codeHash = this.tokenService.hashToken(code);
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-    const user = await this.prisma.$transaction(async (tx) => {
-      const createdUser = await tx.user.create({
-        data: {
-          email: normalizedEmail,
-          passwordHash,
-          role: Role.TEACHER,
-          accountStatus: AccountStatus.PENDING_VERIFICATION,
-          isEmailVerified: false,
-          termsAccepted: dto.termsAccepted ?? true,
-          termsAcceptedAt: new Date(),
-          teacherProfile: {
-            create: {
-              fullName: dto.fullName,
-              schoolName: dto.schoolName,
-              phone: dto.phone,
-              subjectSpecialization: dto.subjectSpecialization,
+    const user = await this.prisma.$transaction(
+      async (tx) => {
+        const createdUser = await tx.user.create({
+          data: {
+            email: normalizedEmail,
+            passwordHash,
+            role: Role.TEACHER,
+            accountStatus: AccountStatus.PENDING_VERIFICATION,
+            isEmailVerified: false,
+            termsAccepted: dto.termsAccepted ?? true,
+            termsAcceptedAt: new Date(),
+            teacherProfile: {
+              create: {
+                fullName: dto.fullName,
+                schoolName: dto.schoolName,
+                phone: dto.phone,
+                subjectSpecialization: dto.subjectSpecialization,
+              },
+            },
+            verificationCodes: {
+              create: {
+                codeHash,
+                type: VerificationType.EMAIL_VERIFICATION,
+                expiresAt,
+              },
             },
           },
-          verificationCodes: {
-            create: {
-              codeHash,
-              type: VerificationType.EMAIL_VERIFICATION,
-              expiresAt,
-            },
+          include: {
+            teacherProfile: true,
           },
-        },
-        include: {
-          teacherProfile: true,
-        },
-      });
+        });
 
-      return createdUser;
-    });
+        return createdUser;
+      },
+      { timeout: 30000, maxWait: 15000 },
+    );
 
     await this.mailService.sendVerificationCode(user.email, dto.fullName, code);
 
@@ -320,26 +326,29 @@ export class AuthService {
     const codeHash = this.tokenService.hashToken(code);
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-    const user = await this.prisma.$transaction(async (tx) => {
-      const createdUser = await tx.user.create({
-        data: {
-          email: normalizedEmail,
-          passwordHash,
-          role: Role.ADMIN,
-          accountStatus: AccountStatus.PENDING_VERIFICATION,
-          isEmailVerified: false,
-          verificationCodes: {
-            create: {
-              codeHash,
-              type: VerificationType.EMAIL_VERIFICATION,
-              expiresAt,
+    const user = await this.prisma.$transaction(
+      async (tx) => {
+        const createdUser = await tx.user.create({
+          data: {
+            email: normalizedEmail,
+            passwordHash,
+            role: Role.ADMIN,
+            accountStatus: AccountStatus.PENDING_VERIFICATION,
+            isEmailVerified: false,
+            verificationCodes: {
+              create: {
+                codeHash,
+                type: VerificationType.EMAIL_VERIFICATION,
+                expiresAt,
+              },
             },
           },
-        },
-      });
+        });
 
-      return createdUser;
-    });
+        return createdUser;
+      },
+      { timeout: 30000, maxWait: 15000 },
+    );
 
     await this.mailService.sendVerificationCode(user.email, dto.fullName, code);
 

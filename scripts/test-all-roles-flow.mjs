@@ -29,12 +29,12 @@ pool.on('error', (err) => {
 });
 
 async function query(text, params) {
-  for (let attempt = 1; attempt <= 3; attempt++) {
+  for (let attempt = 1; attempt <= 5; attempt++) {
     try {
       return await pool.query(text, params);
     } catch (err) {
-      if (attempt === 3) throw err;
-      await new Promise((r) => setTimeout(r, 1000));
+      if (attempt === 5) throw err;
+      await new Promise((r) => setTimeout(r, 1500));
     }
   }
 }
@@ -749,7 +749,169 @@ async function runAllRolesFlow() {
   logSuccess(`Admin platform-wide attendance access verified for student [06201].`);
 
   // ==========================================
-  // PART 9: FINAL DATABASE INTEGRITY REPORT
+  // PART 9: ACADEMIC SESSIONS & GRADEBOOK FLOW
+  // ==========================================
+  banner('ACADEMIC SESSIONS, SUBJECTS & CONTINUOUS ASSESSMENT GRADEBOOK');
+
+  logStep('9.1', 'Teacher Initializes Current Academic Session (POST /api/academic/sessions)');
+  const createSessionRes = await requestJson(`${BASE_URL}/api/academic/sessions`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${teacherNewAccessToken}` },
+    body: JSON.stringify({
+      sessionYear: '2024/2025',
+      termName: 'Term 1',
+      isCurrent: true,
+      startDate: '2024-09-01',
+      endDate: '2024-12-15',
+    }),
+  });
+  if (createSessionRes.status !== 201) throw new Error(`Create session failed: ${JSON.stringify(createSessionRes.data)}`);
+  const activeSession = createSessionRes.data;
+  logSuccess(`Academic Session created: ${activeSession.sessionYear} - ${activeSession.termName} [ID: ${activeSession.id}]`);
+
+  logStep('9.2', 'Teacher Adds Curriculum Subjects (POST /api/academic/subjects)');
+  const mathSubjectRes = await requestJson(`${BASE_URL}/api/academic/subjects`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${teacherNewAccessToken}` },
+    body: JSON.stringify({ name: 'Mathematics', code: 'MATH-101' }),
+  });
+  const scienceSubjectRes = await requestJson(`${BASE_URL}/api/academic/subjects`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${teacherNewAccessToken}` },
+    body: JSON.stringify({ name: 'General Science', code: 'SCI-101' }),
+  });
+  if (mathSubjectRes.status !== 201 || scienceSubjectRes.status !== 201) {
+    throw new Error(`Create subjects failed`);
+  }
+  const mathSubject = mathSubjectRes.data;
+  const scienceSubject = scienceSubjectRes.data;
+  logSuccess(`Subjects registered: ${mathSubject.name} [${mathSubject.code}], ${scienceSubject.name} [${scienceSubject.code}]`);
+
+  logStep('9.3', 'Teacher Records Continuous Assessments & Exam Marks (POST /api/grades/assessments)');
+  const studentDivine = studentMap['06201'];
+  
+  // Math Test (CA)
+  const mathTestRes = await requestJson(`${BASE_URL}/api/grades/assessments`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${teacherNewAccessToken}` },
+    body: JSON.stringify({
+      studentId: studentDivine.id,
+      subjectId: mathSubject.id,
+      academicSessionId: activeSession.id,
+      assessmentType: 'TEST',
+      assessmentTitle: 'Algebra & Geometry CA 1',
+      score: 90,
+      totalPossibleMarks: 100,
+      evaluationDate: '2026-09-20',
+      notes: 'Exceptional precision in quadratic equations',
+    }),
+  });
+  if (mathTestRes.status !== 201) throw new Error(`Record Math Test failed: ${JSON.stringify(mathTestRes.data)}`);
+
+  // Math Exam
+  const mathExamRes = await requestJson(`${BASE_URL}/api/grades/assessments`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${teacherNewAccessToken}` },
+    body: JSON.stringify({
+      studentId: studentDivine.id,
+      subjectId: mathSubject.id,
+      academicSessionId: activeSession.id,
+      assessmentType: 'EXAM',
+      assessmentTitle: 'Term 1 Mathematics Final Examination',
+      score: 95,
+      totalPossibleMarks: 100,
+      evaluationDate: '2026-09-25',
+    }),
+  });
+  if (mathExamRes.status !== 201) throw new Error(`Record Math Exam failed: ${JSON.stringify(mathExamRes.data)}`);
+
+  // Science Test (CA)
+  const sciTestRes = await requestJson(`${BASE_URL}/api/grades/assessments`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${teacherNewAccessToken}` },
+    body: JSON.stringify({
+      studentId: studentDivine.id,
+      subjectId: scienceSubject.id,
+      academicSessionId: activeSession.id,
+      assessmentType: 'TEST',
+      assessmentTitle: 'Cell Biology CA 1',
+      score: 85,
+      totalPossibleMarks: 100,
+      evaluationDate: '2026-09-22',
+    }),
+  });
+  if (sciTestRes.status !== 201) throw new Error(`Record Science Test failed: ${JSON.stringify(sciTestRes.data)}`);
+
+  logSuccess(`Recorded 3 assessments: Math CA (90%), Math Exam (95%), Science CA (85%) with automatic letter grades.`);
+
+  logStep('9.4', 'Teacher Views Classroom Gradebook & Averages (GET /api/grades/class)');
+  const classGradesRes = await requestJson(`${BASE_URL}/api/grades/class`, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${teacherNewAccessToken}` },
+  });
+  if (classGradesRes.status !== 200) throw new Error(`Get class grades failed: ${JSON.stringify(classGradesRes.data)}`);
+  const classGradeStats = classGradesRes.data.summary;
+  logSuccess(`Class Gradebook Stats: Total Assessments=${classGradeStats.totalRecords}, Average Score=${classGradeStats.averageScore}%, Highest=${classGradeStats.highestScore}%, Lowest=${classGradeStats.lowestScore}%`);
+
+  logStep('9.5', 'Student Views Personal Report Card & Earned Badges (GET /api/grades/student/:id)');
+  const studentReportRes = await requestJson(`${BASE_URL}/api/grades/student/${studentDivine.id}`, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${studentAccessToken}` },
+  });
+  if (studentReportRes.status !== 200) throw new Error(`Student report card view failed: ${JSON.stringify(studentReportRes.data)}`);
+  const studentReport = studentReportRes.data;
+  logSuccess(`Student [${studentReport.student.firstName}] Term Average: ${studentReport.summary.overallAverage}% (${studentReport.summary.overallGradeLetter}) | Badges: ${studentReport.badges.join(', ')}`);
+
+  logStep('9.6', 'Parent Views Linked Child Report Card (GET /api/grades/student/:id)');
+  // Parent is linked to 06202 Emma and 06204 Bryan; let's record a score for Emma so parent views it
+  const studentEmma = studentMap['06202'];
+  await requestJson(`${BASE_URL}/api/grades/assessments`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${teacherNewAccessToken}` },
+    body: JSON.stringify({
+      studentId: studentEmma.id,
+      subjectId: mathSubject.id,
+      academicSessionId: activeSession.id,
+      assessmentType: 'EXAM',
+      assessmentTitle: 'Final Exam',
+      score: 88,
+      totalPossibleMarks: 100,
+      evaluationDate: '2026-09-25',
+    }),
+  });
+  const parentChildReportRes = await requestJson(`${BASE_URL}/api/grades/student/${studentEmma.id}`, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${activeParentToken}` },
+  });
+  if (parentChildReportRes.status !== 200) throw new Error(`Parent child report view failed: ${JSON.stringify(parentChildReportRes.data)}`);
+  logSuccess(`Parent verified report card for linked child [${studentEmma.firstName} ${studentEmma.lastName}]: Average=${parentChildReportRes.data.summary.overallAverage}%`);
+
+  logStep('9.7', 'Negative Security Test: Parent Views Unlinked Student Grades (Must reject with 403)');
+  const parentUnlinkedGradesRes = await requestJson(`${BASE_URL}/api/grades/student/${studentDivine.id}`, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${activeParentToken}` },
+  });
+  if (parentUnlinkedGradesRes.status !== 403) throw new Error(`Expected 403 for parent viewing unlinked grades, got: ${parentUnlinkedGradesRes.status}`);
+  logSecurity(`Security verified: Parent view of unlinked student grades rejected with 403 Forbidden.`);
+
+  logStep('9.8', 'Negative Security Test: Student Views Classmate Report Card (Must reject with 403)');
+  const studentClassmateGradesRes = await requestJson(`${BASE_URL}/api/grades/student/${studentEmma.id}`, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${studentAccessToken}` },
+  });
+  if (studentClassmateGradesRes.status !== 403) throw new Error(`Expected 403 for student viewing classmate grades, got: ${studentClassmateGradesRes.status}`);
+  logSecurity(`Security verified: Student viewing classmate report card rejected with 403 Forbidden.`);
+
+  logStep('9.9', 'Admin Platform-Wide Grade Review');
+  const adminGradeViewRes = await requestJson(`${BASE_URL}/api/grades/student/${studentDivine.id}`, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${adminAccessToken}` },
+  });
+  if (adminGradeViewRes.status !== 200) throw new Error(`Admin grade review failed: ${JSON.stringify(adminGradeViewRes.data)}`);
+  logSuccess(`Admin platform-wide grade access verified for student [06201].`);
+
+  // ==========================================
+  // PART 10: FINAL DATABASE INTEGRITY REPORT
   // ==========================================
   banner('FINAL DATABASE & SECURITY REPORT');
 

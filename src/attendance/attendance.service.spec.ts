@@ -26,7 +26,7 @@ describe('AttendanceService', () => {
       firstName: 'Alice',
       lastName: 'Smith',
       studentCode: '05101',
-      teacherId: 'teacher-profile-uuid-1',
+      primaryTeacherId: 'teacher-profile-uuid-1',
       userId: 'student-user-uuid-1',
     },
     {
@@ -34,7 +34,7 @@ describe('AttendanceService', () => {
       firstName: 'Bob',
       lastName: 'Jones',
       studentCode: '05102',
-      teacherId: 'teacher-profile-uuid-1',
+      primaryTeacherId: 'teacher-profile-uuid-1',
       userId: 'student-user-uuid-2',
     },
   ];

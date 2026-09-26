@@ -69,7 +69,7 @@ export class AttendanceService {
     const uniqueStudentIds = Array.from(new Set(studentIds));
     const validStudents = await this.prisma.student.findMany({
       where: {
-        teacherId: teacherProfile.id,
+        primaryTeacherId: teacherProfile.id,
         id: { in: uniqueStudentIds },
       },
     });
@@ -95,13 +95,11 @@ export class AttendanceService {
             update: {
               status: record.status,
               notes: record.notes ?? null,
-              markedById: teacherProfile.id,
               teacherId: teacherProfile.id,
             },
             create: {
               studentId: record.studentId,
               teacherId: teacherProfile.id,
-              markedById: teacherProfile.id,
               date: normalizedDate,
               status: record.status,
               notes: record.notes ?? null,
@@ -200,19 +198,11 @@ export class AttendanceService {
         throw new ForbiddenException('Students can only view their own attendance records');
       }
     } else if (requester.role === Role.PARENT) {
-      const parentProfile = await this.prisma.parentProfile.findUnique({
-        where: { userId: requester.id },
-      });
-
-      if (!parentProfile) {
-        throw new ForbiddenException('Parent profile not found');
-      }
-
       const link = await this.prisma.studentParentLink.findUnique({
         where: {
-          studentId_parentId: {
+          studentId_parentUserId: {
             studentId: student.id,
-            parentId: parentProfile.id,
+            parentUserId: requester.id,
           },
         },
       });
@@ -227,7 +217,7 @@ export class AttendanceService {
         where: { userId: requester.id },
       });
 
-      if (!teacherProfile || student.teacherId !== teacherProfile.id) {
+      if (!teacherProfile || student.primaryTeacherId !== teacherProfile.id) {
         throw new ForbiddenException(
           'Teachers can only view attendance for students in their assigned classroom',
         );

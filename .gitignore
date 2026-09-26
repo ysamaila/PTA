@@ -58,6 +58,9 @@ PRD*.md
 ENDPOINTS.md
 docs/superpowers/
 docs/superpowers
+docs/
+*.plan.md
+*plan*.md
 
 
 

@@ -33,6 +33,13 @@ enum VerificationType {
   PASSWORD_RESET
 }
 
+enum AttendanceStatus {
+  PRESENT
+  LATE
+  ABSENT
+  EXCUSED
+}
+
 model User {
   id                String             @id @default(uuid())
   email             String             @unique
@@ -91,8 +98,9 @@ model TeacherProfile {
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
-  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  students Student[]
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  students          Student[]
+  attendanceRecords AttendanceRecord[]
 
   @@map("teacher_profiles")
 }
@@ -113,13 +121,35 @@ model Student {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
-  user           User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
-  primaryTeacher TeacherProfile?     @relation(fields: [primaryTeacherId], references: [id], onDelete: SetNull)
-  parentLinks    StudentParentLink[]
+  user              User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
+  primaryTeacher    TeacherProfile?     @relation(fields: [primaryTeacherId], references: [id], onDelete: SetNull)
+  parentLinks       StudentParentLink[]
+  attendanceRecords AttendanceRecord[]
 
   @@index([studentCode])
   @@index([primaryTeacherId])
   @@map("students")
+}
+
+model AttendanceRecord {
+  id          String           @id @default(uuid())
+  studentId   String
+  teacherId   String
+  date        DateTime         @db.Date
+  status      AttendanceStatus
+  arrivalTime String?
+  notes       String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  student Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  teacher TeacherProfile @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, date])
+  @@index([studentId])
+  @@index([teacherId])
+  @@index([date])
+  @@map("attendance_records")
 }
 
 model StudentParentLink {

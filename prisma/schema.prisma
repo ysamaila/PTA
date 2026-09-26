@@ -40,6 +40,14 @@ enum AttendanceStatus {
   EXCUSED
 }
 
+enum AssessmentType {
+  QUIZ
+  TEST
+  EXAM
+  HOMEWORK
+  PROJECT
+}
+
 model User {
   id                String             @id @default(uuid())
   email             String             @unique
@@ -101,6 +109,7 @@ model TeacherProfile {
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   students          Student[]
   attendanceRecords AttendanceRecord[]
+  gradeAssessments  GradeAssessment[]
 
   @@map("teacher_profiles")
 }
@@ -125,6 +134,7 @@ model Student {
   primaryTeacher    TeacherProfile?     @relation(fields: [primaryTeacherId], references: [id], onDelete: SetNull)
   parentLinks       StudentParentLink[]
   attendanceRecords AttendanceRecord[]
+  gradeAssessments  GradeAssessment[]
 
   @@index([studentCode])
   @@index([primaryTeacherId])
@@ -215,3 +225,61 @@ model RefreshToken {
   @@index([tokenHash])
   @@map("refresh_tokens")
 }
+
+model AcademicSession {
+  id               String            @id @default(uuid())
+  sessionYear      String
+  termName         String
+  isCurrent        Boolean           @default(false)
+  startDate        DateTime          @db.Date
+  endDate          DateTime          @db.Date
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  gradeAssessments GradeAssessment[]
+
+  @@unique([sessionYear, termName])
+  @@map("academic_sessions")
+}
+
+model Subject {
+  id               String            @id @default(uuid())
+  name             String            @unique
+  code             String?           @unique
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  gradeAssessments GradeAssessment[]
+
+  @@map("subjects")
+}
+
+model GradeAssessment {
+  id                 String          @id @default(uuid())
+  studentId          String
+  subjectId          String
+  academicSessionId  String
+  teacherId          String
+  assessmentType     AssessmentType
+  assessmentTitle    String
+  score              Float
+  totalPossibleMarks Float           @default(100.0)
+  gradeLetter        String?
+  evaluationDate     DateTime        @db.Date
+  notes              String?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  student         Student         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subject         Subject         @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  academicSession AcademicSession @relation(fields: [academicSessionId], references: [id], onDelete: Cascade)
+  teacher         TeacherProfile  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+  @@index([subjectId])
+  @@index([academicSessionId])
+  @@index([teacherId])
+  @@index([studentId, academicSessionId])
+  @@map("grade_assessments")
+}
+

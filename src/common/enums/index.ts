@@ -5,5 +5,8 @@ export {
   Gender,
   AttendanceStatus,
   AssessmentType,
+  HomeworkStatus,
+  SubmissionStatus,
+  ConversationType,
 } from '../../../generated/prisma/client.js';
 

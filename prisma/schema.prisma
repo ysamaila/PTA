@@ -48,6 +48,18 @@ enum AssessmentType {
   PROJECT
 }
 
+enum HomeworkStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum SubmissionStatus {
+  PENDING
+  SUBMITTED
+  REVIEWED
+}
+
 model User {
   id                String             @id @default(uuid())
   email             String             @unique
@@ -110,6 +122,7 @@ model TeacherProfile {
   students          Student[]
   attendanceRecords AttendanceRecord[]
   gradeAssessments  GradeAssessment[]
+  homework          Homework[]
 
   @@map("teacher_profiles")
 }
@@ -132,9 +145,10 @@ model Student {
 
   user              User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
   primaryTeacher    TeacherProfile?     @relation(fields: [primaryTeacherId], references: [id], onDelete: SetNull)
-  parentLinks       StudentParentLink[]
-  attendanceRecords AttendanceRecord[]
-  gradeAssessments  GradeAssessment[]
+  parentLinks         StudentParentLink[]
+  attendanceRecords   AttendanceRecord[]
+  gradeAssessments    GradeAssessment[]
+  homeworkSubmissions HomeworkSubmission[]
 
   @@index([studentCode])
   @@index([primaryTeacherId])
@@ -250,6 +264,7 @@ model Subject {
   updatedAt        DateTime          @updatedAt
 
   gradeAssessments GradeAssessment[]
+  homework         Homework[]
 
   @@map("subjects")
 }
@@ -281,5 +296,53 @@ model GradeAssessment {
   @@index([teacherId])
   @@index([studentId, academicSessionId])
   @@map("grade_assessments")
+}
+
+model Homework {
+  id             String         @id @default(uuid())
+  teacherId      String
+  subjectId      String
+  gradeLevel     String
+  room           String?
+  title          String
+  instructions   String
+  dueDate        DateTime       @db.Date
+  status         HomeworkStatus @default(PUBLISHED)
+  attachmentUrls String[]       @default([])
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  teacher     TeacherProfile       @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  subject     Subject              @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  submissions HomeworkSubmission[]
+
+  @@index([gradeLevel, room])
+  @@index([teacherId])
+  @@index([subjectId])
+  @@index([dueDate])
+  @@map("homework")
+}
+
+model HomeworkSubmission {
+  id                      String           @id @default(uuid())
+  homeworkId              String
+  studentId               String
+  status                  SubmissionStatus @default(PENDING)
+  completedAt             DateTime?
+  submissionNotes         String?
+  attachmentUrls          String[]         @default([])
+  parentSignatureVerified Boolean          @default(false)
+  parentSignedAt          DateTime?
+  parentSignedByUserId    String?
+  createdAt               DateTime         @default(now())
+  updatedAt               DateTime         @updatedAt
+
+  homework Homework @relation(fields: [homeworkId], references: [id], onDelete: Cascade)
+  student  Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([homeworkId, studentId])
+  @@index([studentId])
+  @@index([homeworkId])
+  @@map("homework_submissions")
 }
 

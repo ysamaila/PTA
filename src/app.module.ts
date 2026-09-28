@@ -14,6 +14,7 @@ import { UsersModule } from './users/users.module.js';
 import { KeepAliveModule } from './tasks/keep-alive.module.js';
 import { AttendanceModule } from './attendance/attendance.module.js';
 import { GradesModule } from './grades/grades.module.js';
+import { HomeworkModule } from './homework/homework.module.js';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter.js';
 
 @Module({
@@ -38,6 +39,7 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter.js';
     KeepAliveModule,
     AttendanceModule,
     GradesModule,
+    HomeworkModule,
   ],
 
 

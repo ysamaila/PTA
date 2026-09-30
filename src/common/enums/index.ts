@@ -8,5 +8,6 @@ export {
   HomeworkStatus,
   SubmissionStatus,
   ConversationType,
+  BehaviorCategory,
 } from '../../../generated/prisma/client.js';
 

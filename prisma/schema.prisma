@@ -66,6 +66,14 @@ enum ConversationType {
   BROADCAST
 }
 
+enum BehaviorCategory {
+  TEAMWORK
+  COMMUNICATION
+  RESPECT
+  RESPONSIBILITY
+}
+
+
 model User {
   id                String             @id @default(uuid())
   email             String             @unique
@@ -131,6 +139,7 @@ model TeacherProfile {
   attendanceRecords AttendanceRecord[]
   gradeAssessments  GradeAssessment[]
   homework          Homework[]
+  behaviorRecords   BehaviorRecord[]
 
   @@map("teacher_profiles")
 }
@@ -157,6 +166,7 @@ model Student {
   attendanceRecords   AttendanceRecord[]
   gradeAssessments    GradeAssessment[]
   homeworkSubmissions HomeworkSubmission[]
+  behaviorRecords     BehaviorRecord[]
 
   @@index([studentCode])
   @@index([primaryTeacherId])
@@ -259,6 +269,7 @@ model AcademicSession {
   updatedAt        DateTime          @updatedAt
 
   gradeAssessments GradeAssessment[]
+  behaviorRecords  BehaviorRecord[]
 
   @@unique([sessionYear, termName])
   @@map("academic_sessions")
@@ -398,4 +409,29 @@ model Message {
   @@index([senderId])
   @@map("messages")
 }
+
+model BehaviorRecord {
+  id                String           @id @default(uuid())
+  studentId         String
+  teacherId         String
+  academicSessionId String
+  category          BehaviorCategory
+  score             Int              @default(0)
+  remarks           String?
+  evaluationDate    DateTime         @db.Date @default(now())
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  student         Student         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  teacher         TeacherProfile  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  academicSession AcademicSession @relation(fields: [academicSessionId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, academicSessionId, category])
+  @@index([studentId])
+  @@index([academicSessionId])
+  @@index([teacherId])
+  @@index([studentId, academicSessionId])
+  @@map("behavior_records")
+}
+
 

@@ -501,6 +501,37 @@
           "response": []
         }
       ]
+    },
+    {
+      "name": "Database Management",
+      "item": [
+        {
+          "name": "Clean / Wipe Production Database",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/database/clean",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "database",
+                "clean"
+              ]
+            },
+            "description": "Wipes and truncates all database tables in production/connected database with CASCADE."
+          },
+          "response": []
+        }
+      ]
     }
   ]
 }

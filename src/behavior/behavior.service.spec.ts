@@ -6,7 +6,11 @@ import {
 } from '@nestjs/common';
 import { BehaviorService } from './behavior.service.js';
 import { PrismaService } from '../database/prisma.service.js';
-import { BehaviorCategory, Role } from '../common/enums/index.js';
+import {
+  AccountStatus,
+  BehaviorCategory,
+  Role,
+} from '../common/enums/index.js';
 
 describe('BehaviorService', () => {
   let service: BehaviorService;
@@ -108,7 +112,9 @@ describe('BehaviorService', () => {
     it('evaluates student behavior successfully when teacher has student in homeroom', async () => {
       mockPrisma.teacherProfile.findUnique.mockResolvedValue(mockTeacher);
       mockPrisma.student.findUnique.mockResolvedValue(mockStudent);
-      mockPrisma.academicSession.findUnique.mockResolvedValue(mockAcademicSession);
+      mockPrisma.academicSession.findUnique.mockResolvedValue(
+        mockAcademicSession,
+      );
       mockPrisma.behaviorRecord.upsert.mockResolvedValue(mockBehaviorRecord);
 
       const result = await service.evaluateBehavior(
@@ -127,7 +133,9 @@ describe('BehaviorService', () => {
       mockPrisma.teacherProfile.findUnique.mockResolvedValue(null);
       mockPrisma.teacherProfile.findFirst.mockResolvedValue(mockTeacher);
       mockPrisma.student.findUnique.mockResolvedValue(mockStudent);
-      mockPrisma.academicSession.findUnique.mockResolvedValue(mockAcademicSession);
+      mockPrisma.academicSession.findUnique.mockResolvedValue(
+        mockAcademicSession,
+      );
       mockPrisma.behaviorRecord.upsert.mockResolvedValue(mockBehaviorRecord);
 
       const result = await service.evaluateBehavior(
@@ -187,7 +195,12 @@ describe('BehaviorService', () => {
 
       await expect(
         service.getStudentBehavior(
-          { id: 'user-admin', role: Role.ADMIN, email: 'admin@school.com' },
+          {
+            id: 'user-admin',
+            role: Role.ADMIN,
+            email: 'admin@school.com',
+            accountStatus: AccountStatus.ACTIVE,
+          },
           'non-existent',
         ),
       ).rejects.toThrow(NotFoundException);
@@ -198,7 +211,12 @@ describe('BehaviorService', () => {
 
       await expect(
         service.getStudentBehavior(
-          { id: 'other-student-user', role: Role.STUDENT, email: 'other@school.com' },
+          {
+            id: 'other-student-user',
+            role: Role.STUDENT,
+            email: 'other@school.com',
+            accountStatus: AccountStatus.ACTIVE,
+          },
           mockStudent.id,
         ),
       ).rejects.toThrow(ForbiddenException);
@@ -206,16 +224,39 @@ describe('BehaviorService', () => {
 
     it('allows student to view their own behavior records', async () => {
       mockPrisma.student.findUnique.mockResolvedValue(mockStudent);
-      mockPrisma.academicSession.findFirst.mockResolvedValue(mockAcademicSession);
+      mockPrisma.academicSession.findFirst.mockResolvedValue(
+        mockAcademicSession,
+      );
       mockPrisma.behaviorRecord.findMany.mockResolvedValue([
-        { ...mockBehaviorRecord, category: BehaviorCategory.TEAMWORK, score: 90 },
-        { ...mockBehaviorRecord, category: BehaviorCategory.COMMUNICATION, score: 85 },
-        { ...mockBehaviorRecord, category: BehaviorCategory.RESPECT, score: 95 },
-        { ...mockBehaviorRecord, category: BehaviorCategory.RESPONSIBILITY, score: 90 },
+        {
+          ...mockBehaviorRecord,
+          category: BehaviorCategory.TEAMWORK,
+          score: 90,
+        },
+        {
+          ...mockBehaviorRecord,
+          category: BehaviorCategory.COMMUNICATION,
+          score: 85,
+        },
+        {
+          ...mockBehaviorRecord,
+          category: BehaviorCategory.RESPECT,
+          score: 95,
+        },
+        {
+          ...mockBehaviorRecord,
+          category: BehaviorCategory.RESPONSIBILITY,
+          score: 90,
+        },
       ]);
 
       const result = await service.getStudentBehavior(
-        { id: mockStudent.userId, role: Role.STUDENT, email: 'student@school.com' },
+        {
+          id: mockStudent.userId,
+          role: Role.STUDENT,
+          email: 'student@school.com',
+          accountStatus: AccountStatus.ACTIVE,
+        },
         mockStudent.id,
       );
 
@@ -236,11 +277,20 @@ describe('BehaviorService', () => {
         studentId: mockStudent.id,
         parentUserId: 'parent-user-id',
       });
-      mockPrisma.academicSession.findFirst.mockResolvedValue(mockAcademicSession);
-      mockPrisma.behaviorRecord.findMany.mockResolvedValue([mockBehaviorRecord]);
+      mockPrisma.academicSession.findFirst.mockResolvedValue(
+        mockAcademicSession,
+      );
+      mockPrisma.behaviorRecord.findMany.mockResolvedValue([
+        mockBehaviorRecord,
+      ]);
 
       const result = await service.getStudentBehavior(
-        { id: 'parent-user-id', role: Role.PARENT, email: 'parent@home.com' },
+        {
+          id: 'parent-user-id',
+          role: Role.PARENT,
+          email: 'parent@home.com',
+          accountStatus: AccountStatus.ACTIVE,
+        },
         mockStudent.id,
       );
 
@@ -254,7 +304,12 @@ describe('BehaviorService', () => {
 
       await expect(
         service.getStudentBehavior(
-          { id: 'unlinked-parent', role: Role.PARENT, email: 'parent@home.com' },
+          {
+            id: 'unlinked-parent',
+            role: Role.PARENT,
+            email: 'parent@home.com',
+            accountStatus: AccountStatus.ACTIVE,
+          },
           mockStudent.id,
         ),
       ).rejects.toThrow(ForbiddenException);
@@ -263,11 +318,20 @@ describe('BehaviorService', () => {
     it('allows teacher to view their classroom student behavior records', async () => {
       mockPrisma.student.findUnique.mockResolvedValue(mockStudent);
       mockPrisma.teacherProfile.findUnique.mockResolvedValue(mockTeacher);
-      mockPrisma.academicSession.findFirst.mockResolvedValue(mockAcademicSession);
-      mockPrisma.behaviorRecord.findMany.mockResolvedValue([mockBehaviorRecord]);
+      mockPrisma.academicSession.findFirst.mockResolvedValue(
+        mockAcademicSession,
+      );
+      mockPrisma.behaviorRecord.findMany.mockResolvedValue([
+        mockBehaviorRecord,
+      ]);
 
       const result = await service.getStudentBehavior(
-        { id: mockTeacher.userId, role: Role.TEACHER, email: 'teacher@school.com' },
+        {
+          id: mockTeacher.userId,
+          role: Role.TEACHER,
+          email: 'teacher@school.com',
+          accountStatus: AccountStatus.ACTIVE,
+        },
         mockStudent.id,
       );
 
@@ -285,7 +349,12 @@ describe('BehaviorService', () => {
 
       await expect(
         service.getStudentBehavior(
-          { id: mockTeacher.userId, role: Role.TEACHER, email: 'teacher@school.com' },
+          {
+            id: mockTeacher.userId,
+            role: Role.TEACHER,
+            email: 'teacher@school.com',
+            accountStatus: AccountStatus.ACTIVE,
+          },
           mockStudent.id,
         ),
       ).rejects.toThrow(ForbiddenException);
@@ -296,13 +365,18 @@ describe('BehaviorService', () => {
     it('returns classroom matrix and class averages for teacher', async () => {
       mockPrisma.teacherProfile.findUnique.mockResolvedValue(mockTeacher);
       mockPrisma.student.findMany.mockResolvedValue([mockStudent]);
-      mockPrisma.academicSession.findFirst.mockResolvedValue(mockAcademicSession);
-      mockPrisma.behaviorRecord.findMany.mockResolvedValue([mockBehaviorRecord]);
+      mockPrisma.academicSession.findFirst.mockResolvedValue(
+        mockAcademicSession,
+      );
+      mockPrisma.behaviorRecord.findMany.mockResolvedValue([
+        mockBehaviorRecord,
+      ]);
 
       const result = await service.getClassroomBehavior({
         id: mockTeacher.userId,
         role: Role.TEACHER,
         email: 'teacher@school.com',
+        accountStatus: AccountStatus.ACTIVE,
       });
 
       expect(result.classSummary.totalStudents).toBe(1);
@@ -314,11 +388,18 @@ describe('BehaviorService', () => {
 
     it('allows ADMIN to retrieve classroom behavior with filters', async () => {
       mockPrisma.student.findMany.mockResolvedValue([mockStudent]);
-      mockPrisma.academicSession.findUnique.mockResolvedValue(mockAcademicSession);
+      mockPrisma.academicSession.findUnique.mockResolvedValue(
+        mockAcademicSession,
+      );
       mockPrisma.behaviorRecord.findMany.mockResolvedValue([]);
 
       const result = await service.getClassroomBehavior(
-        { id: 'admin-user', role: Role.ADMIN, email: 'admin@school.com' },
+        {
+          id: 'admin-user',
+          role: Role.ADMIN,
+          email: 'admin@school.com',
+          accountStatus: AccountStatus.ACTIVE,
+        },
         { academicSessionId: mockAcademicSession.id, gradeLevel: 'Grade 5' },
       );
 
@@ -330,7 +411,9 @@ describe('BehaviorService', () => {
 
   describe('updateBehavior', () => {
     it('updates score and remarks successfully by record owner teacher', async () => {
-      mockPrisma.behaviorRecord.findUnique.mockResolvedValue(mockBehaviorRecord);
+      mockPrisma.behaviorRecord.findUnique.mockResolvedValue(
+        mockBehaviorRecord,
+      );
       mockPrisma.teacherProfile.findUnique.mockResolvedValue(mockTeacher);
       mockPrisma.behaviorRecord.update.mockResolvedValue({
         ...mockBehaviorRecord,
@@ -353,12 +436,16 @@ describe('BehaviorService', () => {
       mockPrisma.behaviorRecord.findUnique.mockResolvedValue(null);
 
       await expect(
-        service.updateBehavior(mockTeacher.userId, 'non-existent', { score: 90 }),
+        service.updateBehavior(mockTeacher.userId, 'non-existent', {
+          score: 90,
+        }),
       ).rejects.toThrow(NotFoundException);
     });
 
     it('throws ForbiddenException if teacher is not the record creator', async () => {
-      mockPrisma.behaviorRecord.findUnique.mockResolvedValue(mockBehaviorRecord);
+      mockPrisma.behaviorRecord.findUnique.mockResolvedValue(
+        mockBehaviorRecord,
+      );
       mockPrisma.teacherProfile.findUnique.mockResolvedValue({
         ...mockTeacher,
         id: 'other-teacher-id',
@@ -374,7 +461,9 @@ describe('BehaviorService', () => {
 
   describe('deleteBehavior', () => {
     it('deletes behavior record successfully by creator teacher', async () => {
-      mockPrisma.behaviorRecord.findUnique.mockResolvedValue(mockBehaviorRecord);
+      mockPrisma.behaviorRecord.findUnique.mockResolvedValue(
+        mockBehaviorRecord,
+      );
       mockPrisma.teacherProfile.findUnique.mockResolvedValue(mockTeacher);
       mockPrisma.behaviorRecord.delete.mockResolvedValue(mockBehaviorRecord);
 
@@ -398,7 +487,9 @@ describe('BehaviorService', () => {
     });
 
     it('allows ADMIN to delete any behavior record', async () => {
-      mockPrisma.behaviorRecord.findUnique.mockResolvedValue(mockBehaviorRecord);
+      mockPrisma.behaviorRecord.findUnique.mockResolvedValue(
+        mockBehaviorRecord,
+      );
       mockPrisma.behaviorRecord.delete.mockResolvedValue(mockBehaviorRecord);
 
       const result = await service.deleteBehavior(

@@ -166,8 +166,11 @@ describe('AuthService', () => {
       });
 
       expect(result.user.role).toBe(Role.TEACHER);
-      expect(result.user.accountStatus).toBe(AccountStatus.ACTIVE);
-      expect(result.user.isEmailVerified).toBe(true);
+      expect(result.user.accountStatus).toBe(
+        AccountStatus.PENDING_VERIFICATION,
+      );
+      expect(result.user.isEmailVerified).toBe(false);
+      expect(mockMailService.sendVerificationCode).toHaveBeenCalledTimes(1);
     });
 
     it('should throw BadRequestException if passwords do not match', async () => {
@@ -325,7 +328,26 @@ describe('AuthService', () => {
       ).rejects.toThrow(ForbiddenException);
     });
 
-    it('should auto-activate and allow login if teacher account was pending verification or approval', async () => {
+    it('should reject teacher login if email is not verified', async () => {
+      const hash = await argon2.hash('Secret123');
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        id: 'user_2',
+        email: 'teacher@example.com',
+        passwordHash: hash,
+        role: Role.TEACHER,
+        accountStatus: AccountStatus.PENDING_VERIFICATION,
+        isEmailVerified: false,
+      });
+
+      await expect(
+        service.loginTeacher({
+          email: 'teacher@example.com',
+          password: 'Secret123',
+        }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should reject teacher login if account is pending approval', async () => {
       const hash = await argon2.hash('Secret123');
       mockPrismaService.user.findUnique.mockResolvedValue({
         id: 'user_2',
@@ -335,20 +357,13 @@ describe('AuthService', () => {
         accountStatus: AccountStatus.PENDING_APPROVAL,
         isEmailVerified: false,
       });
-      mockPrismaService.user.update.mockResolvedValue({
-        id: 'user_2',
-        email: 'teacher@example.com',
-        role: Role.TEACHER,
-        accountStatus: AccountStatus.ACTIVE,
-        isEmailVerified: true,
-      });
 
-      const res = await service.loginTeacher({
-        email: 'teacher@example.com',
-        password: 'Secret123',
-      });
-      expect(res.tokens).toBeDefined();
-      expect(mockPrismaService.user.update).toHaveBeenCalled();
+      await expect(
+        service.loginTeacher({
+          email: 'teacher@example.com',
+          password: 'Secret123',
+        }),
+      ).rejects.toThrow(ForbiddenException);
     });
 
     it('should reject suspended accounts', async () => {

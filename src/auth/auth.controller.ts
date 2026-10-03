@@ -54,7 +54,7 @@ export class AuthController {
   @ApiResponse({
     status: 201,
     description:
-      'Teacher registered successfully with active account ready for login',
+      'Teacher registered successfully and verification code dispatched',
   })
   @ApiResponse({ status: 400, description: 'Validation failed' })
   @ApiResponse({ status: 409, description: 'Email already exists' })

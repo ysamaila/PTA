@@ -251,6 +251,10 @@ export class AuthService {
       parallelism: 4,
     });
 
+    const code = this.generateSixDigitCode();
+    const codeHash = this.tokenService.hashToken(code);
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
     const user = await this.prisma.$transaction(
       async (tx) => {
         const createdUser = await tx.user.create({
@@ -258,9 +262,8 @@ export class AuthService {
             email: normalizedEmail,
             passwordHash,
             role: Role.TEACHER,
-            accountStatus: AccountStatus.ACTIVE,
-            isEmailVerified: true,
-            emailVerifiedAt: new Date(),
+            accountStatus: AccountStatus.PENDING_VERIFICATION,
+            isEmailVerified: false,
             termsAccepted: dto.termsAccepted ?? true,
             termsAcceptedAt: new Date(),
             teacherProfile: {
@@ -269,6 +272,13 @@ export class AuthService {
                 schoolName: dto.schoolName,
                 phone: dto.phone,
                 subjectSpecialization: dto.subjectSpecialization,
+              },
+            },
+            verificationCodes: {
+              create: {
+                codeHash,
+                type: VerificationType.EMAIL_VERIFICATION,
+                expiresAt,
               },
             },
           },
@@ -282,9 +292,11 @@ export class AuthService {
       { timeout: 30000, maxWait: 15000 },
     );
 
+    await this.mailService.sendVerificationCode(user.email, dto.fullName, code);
+
     return {
       message:
-        'Teacher registration successful. Your account is active and you can now log in.',
+        'Teacher registration successful. A 6-digit verification code has been sent to your email.',
       user: this.sanitizeUser(user),
     };
   }
@@ -542,34 +554,16 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
-    if (user.role === Role.TEACHER) {
-      if (
-        user.accountStatus === AccountStatus.PENDING_VERIFICATION ||
-        user.accountStatus === AccountStatus.PENDING_APPROVAL
-      ) {
-        await this.prisma.user.update({
-          where: { id: user.id },
-          data: {
-            accountStatus: AccountStatus.ACTIVE,
-            isEmailVerified: true,
-            emailVerifiedAt: user.emailVerifiedAt || new Date(),
-          },
-        });
-        user.accountStatus = AccountStatus.ACTIVE;
-        user.isEmailVerified = true;
-      }
-    } else {
-      if (user.accountStatus === AccountStatus.PENDING_VERIFICATION) {
-        throw new ForbiddenException(
-          'Please verify your email address before logging in',
-        );
-      }
+    if (user.accountStatus === AccountStatus.PENDING_VERIFICATION) {
+      throw new ForbiddenException(
+        'Please verify your email address before logging in',
+      );
+    }
 
-      if (user.accountStatus === AccountStatus.PENDING_APPROVAL) {
-        throw new ForbiddenException(
-          'Your account is pending administrator approval',
-        );
-      }
+    if (user.accountStatus === AccountStatus.PENDING_APPROVAL) {
+      throw new ForbiddenException(
+        'Your account is pending administrator approval',
+      );
     }
 
     if (user.accountStatus === AccountStatus.SUSPENDED) {

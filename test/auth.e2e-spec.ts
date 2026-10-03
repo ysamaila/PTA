@@ -226,9 +226,8 @@ describe('Authentication (e2e)', () => {
 
       expect(res.status).toBe(201);
       expect(res.body.user.role).toBe(Role.TEACHER);
-      expect(res.body.user.accountStatus).toBe(
-        AccountStatus.PENDING_VERIFICATION,
-      );
+      expect(res.body.user.accountStatus).toBe(AccountStatus.ACTIVE);
+      expect(res.body.user.isEmailVerified).toBe(true);
     });
   });
 

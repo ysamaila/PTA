@@ -54,7 +54,7 @@ export class AuthController {
   @ApiResponse({
     status: 201,
     description:
-      'Teacher registered successfully and verification code dispatched',
+      'Teacher registered successfully with active account ready for login',
   })
   @ApiResponse({ status: 400, description: 'Validation failed' })
   @ApiResponse({ status: 409, description: 'Email already exists' })
@@ -174,7 +174,6 @@ export class AuthController {
   async loginStudent(@Body() dto: LoginStudentDto) {
     return this.authService.loginStudent(dto);
   }
-
 
   @Post('refresh')
   @HttpCode(HttpStatus.OK)

@@ -177,7 +177,10 @@ describe('Pastoral Care & Behavior Tracking Module (e2e)', () => {
         if (where.userId === teacherUserId || where.id === teacherId) {
           return Promise.resolve(mockTeacher);
         }
-        if (where.userId === otherTeacherUserId || where.id === otherTeacherId) {
+        if (
+          where.userId === otherTeacherUserId ||
+          where.id === otherTeacherId
+        ) {
           return Promise.resolve(mockOtherTeacher);
         }
         return Promise.resolve(null);
@@ -189,7 +192,10 @@ describe('Pastoral Care & Behavior Tracking Module (e2e)', () => {
         if (where.userId === studentUserId || where.id === studentId) {
           return Promise.resolve(mockStudent);
         }
-        if (where.userId === otherStudentUserId || where.id === otherStudentId) {
+        if (
+          where.userId === otherStudentUserId ||
+          where.id === otherStudentId
+        ) {
           return Promise.resolve(mockOtherStudent);
         }
         return Promise.resolve(null);
@@ -336,7 +342,9 @@ describe('Pastoral Care & Behavior Tracking Module (e2e)', () => {
         });
 
       expect(response.status).toBe(201);
-      expect(response.body.message).toBe('Behavior evaluation recorded successfully');
+      expect(response.body.message).toBe(
+        'Behavior evaluation recorded successfully',
+      );
       expect(response.body.rating).toBe('EXCELLENT');
       expect(response.body.record.score).toBe(92);
     });
@@ -353,7 +361,9 @@ describe('Pastoral Care & Behavior Tracking Module (e2e)', () => {
         });
 
       expect(response.status).toBe(400);
-      expect(response.body.message).toContain('not enrolled in your assigned classroom roster');
+      expect(response.body.message).toContain(
+        'not enrolled in your assigned classroom roster',
+      );
     });
 
     it('rejects evaluation if user is a student or parent', async () => {
@@ -415,7 +425,9 @@ describe('Pastoral Care & Behavior Tracking Module (e2e)', () => {
         .set('Authorization', `Bearer ${otherStudentToken}`);
 
       expect(response.status).toBe(403);
-      expect(response.body.message).toContain('Students can only view their own behavior records');
+      expect(response.body.message).toContain(
+        'Students can only view their own behavior records',
+      );
     });
 
     it('allows linked parent to view child behavior report', async () => {
@@ -433,7 +445,9 @@ describe('Pastoral Care & Behavior Tracking Module (e2e)', () => {
         .set('Authorization', `Bearer ${otherParentToken}`);
 
       expect(response.status).toBe(403);
-      expect(response.body.message).toContain('permission to view behavior records');
+      expect(response.body.message).toContain(
+        'permission to view behavior records',
+      );
     });
 
     it('allows homeroom teacher to view student behavior report', async () => {
@@ -487,7 +501,9 @@ describe('Pastoral Care & Behavior Tracking Module (e2e)', () => {
         });
 
       expect(response.status).toBe(200);
-      expect(response.body.message).toBe('Behavior record updated successfully');
+      expect(response.body.message).toBe(
+        'Behavior record updated successfully',
+      );
       expect(response.body.record.score).toBe(95);
     });
 
@@ -518,7 +534,9 @@ describe('Pastoral Care & Behavior Tracking Module (e2e)', () => {
         .set('Authorization', `Bearer ${teacherToken}`);
 
       expect(response.status).toBe(200);
-      expect(response.body.message).toBe('Behavior record deleted successfully');
+      expect(response.body.message).toBe(
+        'Behavior record deleted successfully',
+      );
     });
   });
 });

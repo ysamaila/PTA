@@ -41,7 +41,9 @@ export class BehaviorService {
         where: { userId: requesterId },
       });
       if (!teacherProfile) {
-        throw new NotFoundException('Teacher profile not found for authenticated user');
+        throw new NotFoundException(
+          'Teacher profile not found for authenticated user',
+        );
       }
       teacherProfileId = teacherProfile.id;
     } else {
@@ -54,7 +56,9 @@ export class BehaviorService {
       } else {
         const anyTeacher = await this.prisma.teacherProfile.findFirst();
         if (!anyTeacher) {
-          throw new BadRequestException('No teacher profile available to assign evaluation');
+          throw new BadRequestException(
+            'No teacher profile available to assign evaluation',
+          );
         }
         teacherProfileId = anyTeacher.id;
       }
@@ -64,7 +68,9 @@ export class BehaviorService {
       where: { id: dto.studentId },
     });
     if (!student) {
-      throw new NotFoundException(`Student with ID '${dto.studentId}' not found`);
+      throw new NotFoundException(
+        `Student with ID '${dto.studentId}' not found`,
+      );
     }
 
     if (requesterRole === Role.TEACHER) {
@@ -75,7 +81,9 @@ export class BehaviorService {
         student.primaryTeacherId !== teacherProfileId &&
         student.grade !== teacherProfile?.assignedGrade
       ) {
-        throw new BadRequestException('Student is not enrolled in your assigned classroom roster');
+        throw new BadRequestException(
+          'Student is not enrolled in your assigned classroom roster',
+        );
       }
     }
 
@@ -168,7 +176,9 @@ export class BehaviorService {
     // Role-based authorization
     if (requester.role === Role.STUDENT) {
       if (student.userId !== requester.id) {
-        throw new ForbiddenException('Students can only view their own behavior records');
+        throw new ForbiddenException(
+          'Students can only view their own behavior records',
+        );
       }
     } else if (requester.role === Role.PARENT) {
       const link = await this.prisma.studentParentLink.findUnique({
@@ -206,7 +216,9 @@ export class BehaviorService {
         where: { id: sessionId },
       });
       if (!targetSession) {
-        throw new NotFoundException(`Academic session with ID '${sessionId}' not found`);
+        throw new NotFoundException(
+          `Academic session with ID '${sessionId}' not found`,
+        );
       }
     } else {
       targetSession = await this.prisma.academicSession.findFirst({
@@ -260,7 +272,9 @@ export class BehaviorService {
 
     const totalScore = rawRecords.reduce((sum, r) => sum + r.score, 0);
     const overallAverageScore =
-      rawRecords.length > 0 ? Math.round((totalScore / rawRecords.length) * 10) / 10 : 0;
+      rawRecords.length > 0
+        ? Math.round((totalScore / rawRecords.length) * 10) / 10
+        : 0;
     const overallRating = calculateBehaviorRating(overallAverageScore);
     const badges = evaluateBehaviorBadges(
       rawRecords.map((r) => ({ category: r.category, score: r.score })),
@@ -308,13 +322,18 @@ export class BehaviorService {
         where: { userId: requester.id },
       });
       if (!teacherProfile) {
-        throw new NotFoundException('Teacher profile not found for authenticated user');
+        throw new NotFoundException(
+          'Teacher profile not found for authenticated user',
+        );
       }
 
       studentWhere = {
         OR: [
           { primaryTeacherId: teacherProfile.id },
-          { grade: teacherProfile.assignedGrade, room: teacherProfile.roomNumber },
+          {
+            grade: teacherProfile.assignedGrade,
+            room: teacherProfile.roomNumber,
+          },
         ],
       };
     } else {
@@ -459,7 +478,9 @@ export class BehaviorService {
     });
 
     if (!record) {
-      throw new NotFoundException(`Behavior record with ID '${recordId}' not found`);
+      throw new NotFoundException(
+        `Behavior record with ID '${recordId}' not found`,
+      );
     }
 
     if (!isAdmin) {
@@ -517,7 +538,9 @@ export class BehaviorService {
     });
 
     if (!record) {
-      throw new NotFoundException(`Behavior record with ID '${recordId}' not found`);
+      throw new NotFoundException(
+        `Behavior record with ID '${recordId}' not found`,
+      );
     }
 
     if (!isAdmin) {

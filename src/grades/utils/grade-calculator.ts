@@ -1,7 +1,10 @@
 /**
  * Calculate grade percentage rounded to 1 decimal place
  */
-export function calculatePercentage(score: number, totalPossibleMarks: number = 100): number {
+export function calculatePercentage(
+  score: number,
+  totalPossibleMarks: number = 100,
+): number {
   if (totalPossibleMarks <= 0) return 0;
   return Math.round((score / totalPossibleMarks) * 1000) / 10;
 }
@@ -41,10 +44,18 @@ export function evaluateStudentBadges(
     if (lowerName.includes('math') && s.averagePercentage >= 85) {
       badges.push('Math Whiz');
     }
-    if ((lowerName.includes('sci') || lowerName.includes('bio') || lowerName.includes('phys')) && s.averagePercentage >= 85) {
+    if (
+      (lowerName.includes('sci') ||
+        lowerName.includes('bio') ||
+        lowerName.includes('phys')) &&
+      s.averagePercentage >= 85
+    ) {
       badges.push('Science Explorer');
     }
-    if ((lowerName.includes('eng') || lowerName.includes('lit')) && s.averagePercentage >= 85) {
+    if (
+      (lowerName.includes('eng') || lowerName.includes('lit')) &&
+      s.averagePercentage >= 85
+    ) {
       badges.push('Literacy Leader');
     }
   }

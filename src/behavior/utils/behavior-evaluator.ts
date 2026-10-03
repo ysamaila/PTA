@@ -34,13 +34,19 @@ export function evaluateBehaviorBadges(
     if (record.category === BehaviorCategory.TEAMWORK && record.score >= 85) {
       badges.push('Team Player');
     }
-    if (record.category === BehaviorCategory.COMMUNICATION && record.score >= 85) {
+    if (
+      record.category === BehaviorCategory.COMMUNICATION &&
+      record.score >= 85
+    ) {
       badges.push('Clear Communicator');
     }
     if (record.category === BehaviorCategory.RESPECT && record.score >= 85) {
       badges.push('Respect Ambassador');
     }
-    if (record.category === BehaviorCategory.RESPONSIBILITY && record.score >= 85) {
+    if (
+      record.category === BehaviorCategory.RESPONSIBILITY &&
+      record.score >= 85
+    ) {
       badges.push('Responsible Citizen');
     }
   }

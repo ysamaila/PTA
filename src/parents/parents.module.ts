@@ -10,4 +10,3 @@ import { PrismaModule } from '../database/prisma.module.js';
   exports: [ParentsService],
 })
 export class ParentsModule {}
-

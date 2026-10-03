@@ -34,7 +34,7 @@ describe('UsersService - Preferences', () => {
       createdAt: new Date(),
       updatedAt: new Date(),
     };
-    jest.spyOn(prisma.userPreferences, 'upsert').mockResolvedValue(mockPref as any);
+    jest.spyOn(prisma.userPreferences, 'upsert').mockResolvedValue(mockPref);
 
     const result = await service.updatePreferences('user-1', {
       darkModeEnabled: true,
@@ -61,7 +61,7 @@ describe('UsersService - Preferences', () => {
       createdAt: new Date(),
       updatedAt: new Date(),
     };
-    jest.spyOn(prisma.userPreferences, 'upsert').mockResolvedValue(mockPref as any);
+    jest.spyOn(prisma.userPreferences, 'upsert').mockResolvedValue(mockPref);
 
     const result = await service.getPreferences('user-1');
     expect(result.userId).toBe('user-1');

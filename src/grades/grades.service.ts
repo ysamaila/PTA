@@ -83,7 +83,9 @@ export class GradesService {
     });
 
     if (!teacherProfile) {
-      throw new NotFoundException('Teacher profile not found for authenticated user');
+      throw new NotFoundException(
+        'Teacher profile not found for authenticated user',
+      );
     }
 
     const student = await this.prisma.student.findUnique({
@@ -91,11 +93,15 @@ export class GradesService {
     });
 
     if (!student) {
-      throw new NotFoundException(`Student with ID '${dto.studentId}' not found`);
+      throw new NotFoundException(
+        `Student with ID '${dto.studentId}' not found`,
+      );
     }
 
     if (student.primaryTeacherId !== teacherProfile.id) {
-      throw new BadRequestException('Student is not enrolled in your assigned classroom roster');
+      throw new BadRequestException(
+        'Student is not enrolled in your assigned classroom roster',
+      );
     }
 
     const subject = await this.prisma.subject.findUnique({
@@ -103,7 +109,9 @@ export class GradesService {
     });
 
     if (!subject) {
-      throw new NotFoundException(`Subject with ID '${dto.subjectId}' not found`);
+      throw new NotFoundException(
+        `Subject with ID '${dto.subjectId}' not found`,
+      );
     }
 
     const academicSession = await this.prisma.academicSession.findUnique({
@@ -111,7 +119,9 @@ export class GradesService {
     });
 
     if (!academicSession) {
-      throw new NotFoundException(`Academic session with ID '${dto.academicSessionId}' not found`);
+      throw new NotFoundException(
+        `Academic session with ID '${dto.academicSessionId}' not found`,
+      );
     }
 
     const totalPossibleMarks = dto.totalPossibleMarks ?? 100.0;
@@ -164,7 +174,9 @@ export class GradesService {
     });
 
     if (!teacherProfile) {
-      throw new NotFoundException('Teacher profile not found for authenticated user');
+      throw new NotFoundException(
+        'Teacher profile not found for authenticated user',
+      );
     }
 
     const where: any = {
@@ -173,7 +185,8 @@ export class GradesService {
 
     if (filter?.studentId) where.studentId = filter.studentId;
     if (filter?.subjectId) where.subjectId = filter.subjectId;
-    if (filter?.academicSessionId) where.academicSessionId = filter.academicSessionId;
+    if (filter?.academicSessionId)
+      where.academicSessionId = filter.academicSessionId;
     if (filter?.assessmentType) where.assessmentType = filter.assessmentType;
 
     const assessments = await this.prisma.gradeAssessment.findMany({
@@ -242,7 +255,9 @@ export class GradesService {
     // Role-based access control
     if (requester.role === Role.STUDENT) {
       if (student.userId !== requester.id) {
-        throw new ForbiddenException('Students can only view their own report card');
+        throw new ForbiddenException(
+          'Students can only view their own report card',
+        );
       }
     } else if (requester.role === Role.PARENT) {
       const link = await this.prisma.studentParentLink.findUnique({
@@ -358,14 +373,18 @@ export class GradesService {
       const caAverage =
         caPercentages.length > 0
           ? Math.round(
-              (caPercentages.reduce((a, b) => a + b, 0) / caPercentages.length) * 10,
+              (caPercentages.reduce((a, b) => a + b, 0) /
+                caPercentages.length) *
+                10,
             ) / 10
           : 0;
 
       const examAverage =
         examPercentages.length > 0
           ? Math.round(
-              (examPercentages.reduce((a, b) => a + b, 0) / examPercentages.length) * 10,
+              (examPercentages.reduce((a, b) => a + b, 0) /
+                examPercentages.length) *
+                10,
             ) / 10
           : 0;
 
@@ -391,7 +410,10 @@ export class GradesService {
       };
     });
 
-    const overallAverageSum = subjectReports.reduce((acc, curr) => acc + curr.overallAverage, 0);
+    const overallAverageSum = subjectReports.reduce(
+      (acc, curr) => acc + curr.overallAverage,
+      0,
+    );
     const overallTermAverage =
       subjectReports.length > 0
         ? Math.round((overallAverageSum / subjectReports.length) * 10) / 10

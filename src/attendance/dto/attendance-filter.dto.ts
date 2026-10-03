@@ -5,7 +5,8 @@ import { AttendanceStatus } from '../../common/enums/index.js';
 export class AttendanceFilterDto {
   @ApiPropertyOptional({
     example: '2026-09-01',
-    description: 'Filter attendance records from this date (inclusive, YYYY-MM-DD)',
+    description:
+      'Filter attendance records from this date (inclusive, YYYY-MM-DD)',
   })
   @IsISO8601()
   @IsOptional()
@@ -13,7 +14,8 @@ export class AttendanceFilterDto {
 
   @ApiPropertyOptional({
     example: '2026-09-30',
-    description: 'Filter attendance records up to this date (inclusive, YYYY-MM-DD)',
+    description:
+      'Filter attendance records up to this date (inclusive, YYYY-MM-DD)',
   })
   @IsISO8601()
   @IsOptional()
@@ -21,7 +23,8 @@ export class AttendanceFilterDto {
 
   @ApiPropertyOptional({
     example: '2026-09-26',
-    description: 'Filter attendance records for a specific single date (YYYY-MM-DD)',
+    description:
+      'Filter attendance records for a specific single date (YYYY-MM-DD)',
   })
   @IsISO8601()
   @IsOptional()

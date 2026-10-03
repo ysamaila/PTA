@@ -31,7 +31,9 @@ export class ParentsService {
     });
 
     if (existingLink) {
-      throw new ConflictException('This child is already linked to your account');
+      throw new ConflictException(
+        'This child is already linked to your account',
+      );
     }
 
     return this.prisma.studentParentLink.create({

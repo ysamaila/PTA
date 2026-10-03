@@ -41,13 +41,21 @@ export class AttendanceService {
 
     const percentages: Record<AttendanceStatus, number> = {
       [AttendanceStatus.PRESENT]:
-        total > 0 ? Math.round((counts[AttendanceStatus.PRESENT] / total) * 1000) / 10 : 0,
+        total > 0
+          ? Math.round((counts[AttendanceStatus.PRESENT] / total) * 1000) / 10
+          : 0,
       [AttendanceStatus.LATE]:
-        total > 0 ? Math.round((counts[AttendanceStatus.LATE] / total) * 1000) / 10 : 0,
+        total > 0
+          ? Math.round((counts[AttendanceStatus.LATE] / total) * 1000) / 10
+          : 0,
       [AttendanceStatus.ABSENT]:
-        total > 0 ? Math.round((counts[AttendanceStatus.ABSENT] / total) * 1000) / 10 : 0,
+        total > 0
+          ? Math.round((counts[AttendanceStatus.ABSENT] / total) * 1000) / 10
+          : 0,
       [AttendanceStatus.EXCUSED]:
-        total > 0 ? Math.round((counts[AttendanceStatus.EXCUSED] / total) * 1000) / 10 : 0,
+        total > 0
+          ? Math.round((counts[AttendanceStatus.EXCUSED] / total) * 1000) / 10
+          : 0,
     };
 
     return { total, counts, percentages };
@@ -62,7 +70,9 @@ export class AttendanceService {
     });
 
     if (!teacherProfile) {
-      throw new NotFoundException('Teacher profile not found for authenticated user');
+      throw new NotFoundException(
+        'Teacher profile not found for authenticated user',
+      );
     }
 
     const studentIds = dto.records.map((r) => r.studentId);
@@ -120,13 +130,18 @@ export class AttendanceService {
   /**
    * Retrieve classroom roll call and live attendance rates for a teacher
    */
-  async getClassAttendance(teacherUserId: string, filter?: AttendanceFilterDto) {
+  async getClassAttendance(
+    teacherUserId: string,
+    filter?: AttendanceFilterDto,
+  ) {
     const teacherProfile = await this.prisma.teacherProfile.findUnique({
       where: { userId: teacherUserId },
     });
 
     if (!teacherProfile) {
-      throw new NotFoundException('Teacher profile not found for authenticated user');
+      throw new NotFoundException(
+        'Teacher profile not found for authenticated user',
+      );
     }
 
     const where: any = {
@@ -195,7 +210,9 @@ export class AttendanceService {
     // Role-based access control
     if (requester.role === Role.STUDENT) {
       if (student.userId !== requester.id) {
-        throw new ForbiddenException('Students can only view their own attendance records');
+        throw new ForbiddenException(
+          'Students can only view their own attendance records',
+        );
       }
     } else if (requester.role === Role.PARENT) {
       const link = await this.prisma.studentParentLink.findUnique({

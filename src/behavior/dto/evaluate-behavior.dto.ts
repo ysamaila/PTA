@@ -51,7 +51,8 @@ export class EvaluateBehaviorDto {
 
   @ApiPropertyOptional({
     description: 'Observational remarks, pastoral comments, or feedback',
-    example: 'Consistently demonstrates strong peer collaboration and empathy in group tasks.',
+    example:
+      'Consistently demonstrates strong peer collaboration and empathy in group tasks.',
   })
   @IsOptional()
   @IsString()

@@ -46,7 +46,8 @@ export class StudentAttendanceEntryDto {
 export class MarkAttendanceDto {
   @ApiProperty({
     example: '2026-09-26',
-    description: 'Attendance date in ISO8601 YYYY-MM-DD or full timestamp format',
+    description:
+      'Attendance date in ISO8601 YYYY-MM-DD or full timestamp format',
   })
   @IsISO8601()
   @IsNotEmpty()

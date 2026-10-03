@@ -122,7 +122,9 @@ describe('GradesService', () => {
       jest
         .spyOn(prisma.teacherProfile, 'findUnique')
         .mockResolvedValue(mockTeacherProfile as any);
-      jest.spyOn(prisma.student, 'findUnique').mockResolvedValue(mockOtherStudent as any);
+      jest
+        .spyOn(prisma.student, 'findUnique')
+        .mockResolvedValue(mockOtherStudent as any);
 
       await expect(
         service.recordAssessment(mockTeacherProfile.userId, validDto),
@@ -133,7 +135,9 @@ describe('GradesService', () => {
       jest
         .spyOn(prisma.teacherProfile, 'findUnique')
         .mockResolvedValue(mockTeacherProfile as any);
-      jest.spyOn(prisma.student, 'findUnique').mockResolvedValue(mockStudent as any);
+      jest
+        .spyOn(prisma.student, 'findUnique')
+        .mockResolvedValue(mockStudent as any);
       jest.spyOn(prisma.subject, 'findUnique').mockResolvedValue(null);
 
       await expect(
@@ -145,9 +149,15 @@ describe('GradesService', () => {
       jest
         .spyOn(prisma.teacherProfile, 'findUnique')
         .mockResolvedValue(mockTeacherProfile as any);
-      jest.spyOn(prisma.student, 'findUnique').mockResolvedValue(mockStudent as any);
-      jest.spyOn(prisma.subject, 'findUnique').mockResolvedValue(mockSubject as any);
-      jest.spyOn(prisma.academicSession, 'findUnique').mockResolvedValue(mockSession as any);
+      jest
+        .spyOn(prisma.student, 'findUnique')
+        .mockResolvedValue(mockStudent as any);
+      jest
+        .spyOn(prisma.subject, 'findUnique')
+        .mockResolvedValue(mockSubject as any);
+      jest
+        .spyOn(prisma.academicSession, 'findUnique')
+        .mockResolvedValue(mockSession as any);
 
       const mockSaved = {
         id: 'grade-uuid-1',
@@ -157,9 +167,14 @@ describe('GradesService', () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-      jest.spyOn(prisma.gradeAssessment, 'create').mockResolvedValue(mockSaved as any);
+      jest
+        .spyOn(prisma.gradeAssessment, 'create')
+        .mockResolvedValue(mockSaved as any);
 
-      const result = await service.recordAssessment(mockTeacherProfile.userId, validDto);
+      const result = await service.recordAssessment(
+        mockTeacherProfile.userId,
+        validDto,
+      );
 
       expect(result).toBeDefined();
       expect(result.gradeLetter).toBe('A');
@@ -172,9 +187,9 @@ describe('GradesService', () => {
     it('should throw NotFoundException if teacher profile does not exist', async () => {
       jest.spyOn(prisma.teacherProfile, 'findUnique').mockResolvedValue(null);
 
-      await expect(
-        service.getClassGrades('non-existent-user'),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.getClassGrades('non-existent-user')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should return classroom grades with statistical summary', async () => {
@@ -225,8 +240,12 @@ describe('GradesService', () => {
     });
 
     it('should allow Student to view their own report card', async () => {
-      jest.spyOn(prisma.student, 'findUnique').mockResolvedValue(mockStudent as any);
-      jest.spyOn(prisma.academicSession, 'findFirst').mockResolvedValue(mockSession as any);
+      jest
+        .spyOn(prisma.student, 'findUnique')
+        .mockResolvedValue(mockStudent as any);
+      jest
+        .spyOn(prisma.academicSession, 'findFirst')
+        .mockResolvedValue(mockSession as any);
       jest.spyOn(prisma.gradeAssessment, 'findMany').mockResolvedValue([]);
 
       const result = await service.getStudentReportCard(
@@ -239,7 +258,9 @@ describe('GradesService', () => {
     });
 
     it('should forbid Student from viewing another student report card', async () => {
-      jest.spyOn(prisma.student, 'findUnique').mockResolvedValue(mockOtherStudent as any);
+      jest
+        .spyOn(prisma.student, 'findUnique')
+        .mockResolvedValue(mockOtherStudent as any);
 
       await expect(
         service.getStudentReportCard(
@@ -250,11 +271,15 @@ describe('GradesService', () => {
     });
 
     it('should allow Parent to view linked child report card', async () => {
-      jest.spyOn(prisma.student, 'findUnique').mockResolvedValue(mockStudent as any);
+      jest
+        .spyOn(prisma.student, 'findUnique')
+        .mockResolvedValue(mockStudent as any);
       jest
         .spyOn(prisma.studentParentLink, 'findUnique')
         .mockResolvedValue({ id: 'link-1' } as any);
-      jest.spyOn(prisma.academicSession, 'findFirst').mockResolvedValue(mockSession as any);
+      jest
+        .spyOn(prisma.academicSession, 'findFirst')
+        .mockResolvedValue(mockSession as any);
       jest.spyOn(prisma.gradeAssessment, 'findMany').mockResolvedValue([]);
 
       const result = await service.getStudentReportCard(
@@ -266,8 +291,12 @@ describe('GradesService', () => {
     });
 
     it('should forbid Parent from viewing unlinked student report card', async () => {
-      jest.spyOn(prisma.student, 'findUnique').mockResolvedValue(mockStudent as any);
-      jest.spyOn(prisma.studentParentLink, 'findUnique').mockResolvedValue(null);
+      jest
+        .spyOn(prisma.student, 'findUnique')
+        .mockResolvedValue(mockStudent as any);
+      jest
+        .spyOn(prisma.studentParentLink, 'findUnique')
+        .mockResolvedValue(null);
 
       await expect(
         service.getStudentReportCard(
@@ -278,8 +307,12 @@ describe('GradesService', () => {
     });
 
     it('should correctly calculate Continuous Assessment vs Exam splits and badges', async () => {
-      jest.spyOn(prisma.student, 'findUnique').mockResolvedValue(mockStudent as any);
-      jest.spyOn(prisma.academicSession, 'findFirst').mockResolvedValue(mockSession as any);
+      jest
+        .spyOn(prisma.student, 'findUnique')
+        .mockResolvedValue(mockStudent as any);
+      jest
+        .spyOn(prisma.academicSession, 'findFirst')
+        .mockResolvedValue(mockSession as any);
 
       const mockGrades = [
         {
@@ -303,7 +336,9 @@ describe('GradesService', () => {
           subject: mockSubject,
         },
       ];
-      jest.spyOn(prisma.gradeAssessment, 'findMany').mockResolvedValue(mockGrades as any);
+      jest
+        .spyOn(prisma.gradeAssessment, 'findMany')
+        .mockResolvedValue(mockGrades as any);
 
       const result = await service.getStudentReportCard(
         { id: 'admin-id', role: Role.ADMIN } as any,

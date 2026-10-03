@@ -87,7 +87,7 @@ describe('ParentsService', () => {
 
     jest
       .spyOn(prisma.studentParentLink, 'create')
-      .mockResolvedValue(mockCreatedLink as any);
+      .mockResolvedValue(mockCreatedLink);
 
     const result = await service.linkStudent('parent-uuid', {
       studentCode: '06201',

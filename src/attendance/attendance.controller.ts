@@ -13,7 +13,6 @@ import {
   ApiBearerAuth,
   ApiOperation,
   ApiParam,
-  ApiQuery,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
@@ -48,7 +47,8 @@ export class AttendanceController {
   })
   @ApiResponse({
     status: 400,
-    description: 'Validation failed or one or more students not enrolled under teacher',
+    description:
+      'Validation failed or one or more students not enrolled under teacher',
   })
   @ApiResponse({
     status: 403,
@@ -112,6 +112,10 @@ export class AttendanceController {
     @Param('studentId') studentId: string,
     @Query() filter: AttendanceFilterDto,
   ) {
-    return this.attendanceService.getStudentAttendance(requester, studentId, filter);
+    return this.attendanceService.getStudentAttendance(
+      requester,
+      studentId,
+      filter,
+    );
   }
 }

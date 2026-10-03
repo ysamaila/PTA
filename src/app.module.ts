@@ -46,7 +46,6 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter.js';
     BehaviorModule,
   ],
 
-
   controllers: [AppController],
   providers: [
     AppService,

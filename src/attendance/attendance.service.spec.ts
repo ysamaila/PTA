@@ -296,7 +296,9 @@ describe('AttendanceService', () => {
       jest
         .spyOn(prisma.parentProfile, 'findUnique')
         .mockResolvedValue({ id: 'parent-profile-1' } as any);
-      jest.spyOn(prisma.studentParentLink, 'findUnique').mockResolvedValue(null);
+      jest
+        .spyOn(prisma.studentParentLink, 'findUnique')
+        .mockResolvedValue(null);
 
       await expect(
         service.getStudentAttendance(

@@ -22,7 +22,9 @@ export class TeachersService {
     });
 
     if (!teacherProfile) {
-      throw new NotFoundException('Teacher profile not found for authenticated user');
+      throw new NotFoundException(
+        'Teacher profile not found for authenticated user',
+      );
     }
 
     if (teacherProfile.students.length >= teacherProfile.studentCapacity) {
@@ -144,7 +146,9 @@ export class TeachersService {
     });
 
     if (!teacherProfile) {
-      throw new NotFoundException('Teacher profile not found for authenticated user');
+      throw new NotFoundException(
+        'Teacher profile not found for authenticated user',
+      );
     }
 
     return {
@@ -185,7 +189,9 @@ export class TeachersService {
     });
 
     if (!teacherProfile) {
-      throw new NotFoundException('Teacher profile not found for authenticated user');
+      throw new NotFoundException(
+        'Teacher profile not found for authenticated user',
+      );
     }
 
     const student = await this.prisma.student.findFirst({

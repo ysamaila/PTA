@@ -16,7 +16,8 @@ export class UpdateBehaviorDto {
 
   @ApiPropertyOptional({
     description: 'Updated observational remarks or comments',
-    example: 'Showed marked improvement in active listening during class debates.',
+    example:
+      'Showed marked improvement in active listening during class debates.',
   })
   @IsOptional()
   @IsString()

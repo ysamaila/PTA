@@ -4,7 +4,6 @@ import pg from 'pg';
 import dotenv from 'dotenv';
 import * as argon2 from 'argon2';
 
-
 dotenv.config();
 
 const PORT = process.env.PORT || 4000;
@@ -62,13 +61,19 @@ const colors = {
 };
 
 function banner(text) {
-  console.log(`\n${colors.bright}${colors.blue}================================================================${colors.reset}`);
+  console.log(
+    `\n${colors.bright}${colors.blue}================================================================${colors.reset}`,
+  );
   console.log(`${colors.bright}${colors.blue}   ${text}${colors.reset}`);
-  console.log(`${colors.bright}${colors.blue}================================================================${colors.reset}`);
+  console.log(
+    `${colors.bright}${colors.blue}================================================================${colors.reset}`,
+  );
 }
 
 function logStep(step, message) {
-  console.log(`\n${colors.cyan}[STEP ${step}]${colors.reset} ${colors.bright}${message}${colors.reset}`);
+  console.log(
+    `\n${colors.cyan}[STEP ${step}]${colors.reset} ${colors.bright}${message}${colors.reset}`,
+  );
 }
 
 function logSuccess(message) {
@@ -89,7 +94,7 @@ function requestJson(urlStr, options = {}) {
     const bodyData = options.body || '';
     const headers = {
       'Content-Type': 'application/json',
-      'Connection': 'close',
+      Connection: 'close',
       ...(options.headers || {}),
     };
     if (bodyData) {
@@ -113,9 +118,13 @@ function requestJson(urlStr, options = {}) {
           } catch {
             data = raw;
           }
-          resolve({ status: res.statusCode, ok: res.statusCode >= 200 && res.statusCode < 300, data });
+          resolve({
+            status: res.statusCode,
+            ok: res.statusCode >= 200 && res.statusCode < 300,
+            data,
+          });
         });
-      }
+      },
     );
     req.on('error', reject);
     req.setTimeout(30000, () => {
@@ -153,12 +162,15 @@ async function runAllRolesFlow() {
   await query('DELETE FROM teacher_profiles');
   await query('DELETE FROM users');
 
-
   const afterCount = await query('SELECT count(*)::int as count FROM users');
   if (afterCount.rows[0].count !== 0) {
-    throw new Error(`Purge failed. Remaining users: ${afterCount.rows[0].count}`);
+    throw new Error(
+      `Purge failed. Remaining users: ${afterCount.rows[0].count}`,
+    );
   }
-  logSuccess(`Database fully wiped. Current user count: ${afterCount.rows[0].count}`);
+  logSuccess(
+    `Database fully wiped. Current user count: ${afterCount.rows[0].count}`,
+  );
 
   // Test accounts
   const parentEmail = 'yusuf.samaila@outsourceglobal.com';
@@ -195,8 +207,11 @@ async function runAllRolesFlow() {
       termsAccepted: true,
     }),
   });
-  if (parentReg.status !== 201) throw new Error(`Parent signup failed: ${JSON.stringify(parentReg.data)}`);
-  logSuccess(`Parent registered [Status: ${parentReg.data.user.accountStatus}]`);
+  if (parentReg.status !== 201)
+    throw new Error(`Parent signup failed: ${JSON.stringify(parentReg.data)}`);
+  logSuccess(
+    `Parent registered [Status: ${parentReg.data.user.accountStatus}]`,
+  );
   results.parent.signup = true;
 
   logStep('1.2', 'Resolving OTP from database and email dispatch');
@@ -205,7 +220,7 @@ async function runAllRolesFlow() {
      JOIN users u ON u.id = vc."userId" 
      WHERE u.email = $1 AND vc.type = 'EMAIL_VERIFICATION' AND vc."usedAt" IS NULL 
      ORDER BY vc."createdAt" DESC LIMIT 1`,
-    [parentEmail]
+    [parentEmail],
   );
   const parentOtp = resolveOtpFromHash(parentCodeRow.rows[0].codeHash);
   logNotice(`Retrieved 6-Digit OTP: [${parentOtp}] for ${parentEmail}`);
@@ -215,8 +230,13 @@ async function runAllRolesFlow() {
     method: 'POST',
     body: JSON.stringify({ email: parentEmail, code: parentOtp }),
   });
-  if (parentVerify.status !== 200) throw new Error(`Parent verify failed: ${JSON.stringify(parentVerify.data)}`);
-  logSuccess(`Parent email verified. Account Status: ${parentVerify.data.user.accountStatus}`);
+  if (parentVerify.status !== 200)
+    throw new Error(
+      `Parent verify failed: ${JSON.stringify(parentVerify.data)}`,
+    );
+  logSuccess(
+    `Parent email verified. Account Status: ${parentVerify.data.user.accountStatus}`,
+  );
   results.parent.verification = true;
 
   logStep('1.4', 'Parent Login with initial password');
@@ -224,7 +244,10 @@ async function runAllRolesFlow() {
     method: 'POST',
     body: JSON.stringify({ email: parentEmail, password: initialPassword }),
   });
-  if (parentLogin1.status !== 200) throw new Error(`Parent login failed: ${JSON.stringify(parentLogin1.data)}`);
+  if (parentLogin1.status !== 200)
+    throw new Error(
+      `Parent login failed: ${JSON.stringify(parentLogin1.data)}`,
+    );
   logSuccess(`Parent login succeeded. AccessToken generated.`);
   results.parent.initialLogin = true;
 
@@ -234,39 +257,61 @@ async function runAllRolesFlow() {
   const parentMe = await requestJson(`${BASE_URL}/api/auth/me`, {
     headers: { Authorization: `Bearer ${parentAccessToken}` },
   });
-  if (parentMe.status !== 200) throw new Error(`Parent me failed: ${JSON.stringify(parentMe.data)}`);
-  logSuccess(`Profile confirmed: ${parentMe.data.profile.fullName} [Role: ${parentMe.data.role}]`);
+  if (parentMe.status !== 200)
+    throw new Error(`Parent me failed: ${JSON.stringify(parentMe.data)}`);
+  logSuccess(
+    `Profile confirmed: ${parentMe.data.profile.fullName} [Role: ${parentMe.data.role}]`,
+  );
 
   logStep('1.6', 'Parent Password Change (change-password)');
-  const parentChangePass = await requestJson(`${BASE_URL}/api/auth/change-password`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${parentAccessToken}` },
-    body: JSON.stringify({
-      currentPassword: initialPassword,
-      newPassword: changedPassword,
-    }),
-  });
-  if (parentChangePass.status !== 200) throw new Error(`Password change failed: ${JSON.stringify(parentChangePass.data)}`);
+  const parentChangePass = await requestJson(
+    `${BASE_URL}/api/auth/change-password`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${parentAccessToken}` },
+      body: JSON.stringify({
+        currentPassword: initialPassword,
+        newPassword: changedPassword,
+      }),
+    },
+  );
+  if (parentChangePass.status !== 200)
+    throw new Error(
+      `Password change failed: ${JSON.stringify(parentChangePass.data)}`,
+    );
   logSuccess(`Password changed successfully.`);
   results.parent.passwordChange = true;
 
   logStep('1.7', 'Testing Login with OLD Password (must fail)');
-  const parentOldLogin = await requestJson(`${BASE_URL}/api/auth/parent/login`, {
-    method: 'POST',
-    body: JSON.stringify({ email: parentEmail, password: initialPassword }),
-  });
+  const parentOldLogin = await requestJson(
+    `${BASE_URL}/api/auth/parent/login`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ email: parentEmail, password: initialPassword }),
+    },
+  );
   if (parentOldLogin.status === 401) {
-    logSecurity(`Security verified: Old password rejected with 401 Unauthorized.`);
+    logSecurity(
+      `Security verified: Old password rejected with 401 Unauthorized.`,
+    );
   } else {
-    throw new Error(`Old password unexpectedly accepted! Status: ${parentOldLogin.status}`);
+    throw new Error(
+      `Old password unexpectedly accepted! Status: ${parentOldLogin.status}`,
+    );
   }
 
   logStep('1.8', 'Parent Login with NEW Password');
-  const parentNewLogin = await requestJson(`${BASE_URL}/api/auth/parent/login`, {
-    method: 'POST',
-    body: JSON.stringify({ email: parentEmail, password: changedPassword }),
-  });
-  if (parentNewLogin.status !== 200) throw new Error(`New password login failed: ${JSON.stringify(parentNewLogin.data)}`);
+  const parentNewLogin = await requestJson(
+    `${BASE_URL}/api/auth/parent/login`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ email: parentEmail, password: changedPassword }),
+    },
+  );
+  if (parentNewLogin.status !== 200)
+    throw new Error(
+      `New password login failed: ${JSON.stringify(parentNewLogin.data)}`,
+    );
   logSuccess(`Login with new password succeeded!`);
   results.parent.newPasswordLogin = true;
 
@@ -276,20 +321,28 @@ async function runAllRolesFlow() {
   banner('ROLE 2: TEACHER COMPLETE AUTH FLOW');
 
   logStep('2.1', `Sign up Teacher: ${teacherEmail}`);
-  const teacherReg = await requestJson(`${BASE_URL}/api/auth/teacher/register`, {
-    method: 'POST',
-    body: JSON.stringify({
-      role: 'teacher',
-      fullName: 'Mr. Yusuf Samaila (Teacher)',
-      workEmail: teacherEmail,
-      schoolName: 'Apex International Academy',
-      password: initialPassword,
-      confirmPassword: initialPassword,
-      termsAccepted: true,
-    }),
-  });
-  if (teacherReg.status !== 201) throw new Error(`Teacher signup failed: ${JSON.stringify(teacherReg.data)}`);
-  logSuccess(`Teacher registered [Status: ${teacherReg.data.user.accountStatus}]`);
+  const teacherReg = await requestJson(
+    `${BASE_URL}/api/auth/teacher/register`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        role: 'teacher',
+        fullName: 'Mr. Yusuf Samaila (Teacher)',
+        workEmail: teacherEmail,
+        schoolName: 'Apex International Academy',
+        password: initialPassword,
+        confirmPassword: initialPassword,
+        termsAccepted: true,
+      }),
+    },
+  );
+  if (teacherReg.status !== 201)
+    throw new Error(
+      `Teacher signup failed: ${JSON.stringify(teacherReg.data)}`,
+    );
+  logSuccess(
+    `Teacher registered [Status: ${teacherReg.data.user.accountStatus}]`,
+  );
   results.teacher.signup = true;
 
   logStep('2.2', 'Resolving Teacher OTP code');
@@ -298,7 +351,7 @@ async function runAllRolesFlow() {
      JOIN users u ON u.id = vc."userId" 
      WHERE u.email = $1 AND vc.type = 'EMAIL_VERIFICATION' AND vc."usedAt" IS NULL 
      ORDER BY vc."createdAt" DESC LIMIT 1`,
-    [teacherEmail]
+    [teacherEmail],
   );
   const teacherOtp = resolveOtpFromHash(teacherCodeRow.rows[0].codeHash);
   logNotice(`Retrieved 6-Digit OTP: [${teacherOtp}] for ${teacherEmail}`);
@@ -308,84 +361,134 @@ async function runAllRolesFlow() {
     method: 'POST',
     body: JSON.stringify({ email: teacherEmail, code: teacherOtp }),
   });
-  if (teacherVerify.status !== 200) throw new Error(`Teacher verify failed: ${JSON.stringify(teacherVerify.data)}`);
-  logSuccess(`Teacher email verified. Account Status transitioned to: ${teacherVerify.data.user.accountStatus}`);
+  if (teacherVerify.status !== 200)
+    throw new Error(
+      `Teacher verify failed: ${JSON.stringify(teacherVerify.data)}`,
+    );
+  logSuccess(
+    `Teacher email verified. Account Status transitioned to: ${teacherVerify.data.user.accountStatus}`,
+  );
   results.teacher.verification = true;
 
   logStep('2.4', 'Testing Login before Admin Approval (must fail with 403)');
-  const teacherPreApprovalLogin = await requestJson(`${BASE_URL}/api/auth/teacher/login`, {
-    method: 'POST',
-    body: JSON.stringify({ email: teacherEmail, password: initialPassword }),
-  });
+  const teacherPreApprovalLogin = await requestJson(
+    `${BASE_URL}/api/auth/teacher/login`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ email: teacherEmail, password: initialPassword }),
+    },
+  );
   if (teacherPreApprovalLogin.status === 403) {
-    logSecurity(`Security verified: Teacher login rejected with 403 (${teacherPreApprovalLogin.data.message})`);
+    logSecurity(
+      `Security verified: Teacher login rejected with 403 (${teacherPreApprovalLogin.data.message})`,
+    );
   } else {
-    throw new Error(`Teacher login before approval unexpectedly succeeded! Status: ${teacherPreApprovalLogin.status}`);
+    throw new Error(
+      `Teacher login before approval unexpectedly succeeded! Status: ${teacherPreApprovalLogin.status}`,
+    );
   }
 
   logStep('2.5', 'Admin Approves Teacher (Simulating administrator review)');
-  await query(`UPDATE users SET "accountStatus" = 'ACTIVE' WHERE email = $1`, [teacherEmail]);
+  await query(`UPDATE users SET "accountStatus" = 'ACTIVE' WHERE email = $1`, [
+    teacherEmail,
+  ]);
   logSuccess(`Teacher account approved and set to ACTIVE in Neon DB.`);
 
   logStep('2.6', 'Teacher Login after approval');
-  const teacherLogin1 = await requestJson(`${BASE_URL}/api/auth/teacher/login`, {
-    method: 'POST',
-    body: JSON.stringify({ email: teacherEmail, password: initialPassword }),
-  });
-  if (teacherLogin1.status !== 200) throw new Error(`Teacher login failed: ${JSON.stringify(teacherLogin1.data)}`);
+  const teacherLogin1 = await requestJson(
+    `${BASE_URL}/api/auth/teacher/login`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ email: teacherEmail, password: initialPassword }),
+    },
+  );
+  if (teacherLogin1.status !== 200)
+    throw new Error(
+      `Teacher login failed: ${JSON.stringify(teacherLogin1.data)}`,
+    );
   logSuccess(`Teacher login succeeded. AccessToken generated.`);
   results.teacher.initialLogin = true;
 
   const teacherAccessToken = teacherLogin1.data.tokens.accessToken;
 
   logStep('2.7', 'Teacher Password Change (change-password)');
-  const teacherChangePass = await requestJson(`${BASE_URL}/api/auth/change-password`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${teacherAccessToken}` },
-    body: JSON.stringify({
-      currentPassword: initialPassword,
-      newPassword: changedPassword,
-    }),
-  });
-  if (teacherChangePass.status !== 200) throw new Error(`Teacher password change failed: ${JSON.stringify(teacherChangePass.data)}`);
+  const teacherChangePass = await requestJson(
+    `${BASE_URL}/api/auth/change-password`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${teacherAccessToken}` },
+      body: JSON.stringify({
+        currentPassword: initialPassword,
+        newPassword: changedPassword,
+      }),
+    },
+  );
+  if (teacherChangePass.status !== 200)
+    throw new Error(
+      `Teacher password change failed: ${JSON.stringify(teacherChangePass.data)}`,
+    );
   logSuccess(`Teacher password changed successfully.`);
   results.teacher.passwordChange = true;
 
   logStep('2.8', 'Teacher Login with NEW Password');
-  const teacherNewLogin = await requestJson(`${BASE_URL}/api/auth/teacher/login`, {
-    method: 'POST',
-    body: JSON.stringify({ email: teacherEmail, password: changedPassword }),
-  });
-  if (teacherNewLogin.status !== 200) throw new Error(`Teacher new password login failed: ${JSON.stringify(teacherNewLogin.data)}`);
+  const teacherNewLogin = await requestJson(
+    `${BASE_URL}/api/auth/teacher/login`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ email: teacherEmail, password: changedPassword }),
+    },
+  );
+  if (teacherNewLogin.status !== 200)
+    throw new Error(
+      `Teacher new password login failed: ${JSON.stringify(teacherNewLogin.data)}`,
+    );
   logSuccess(`Teacher login with new password succeeded!`);
   results.teacher.newPasswordLogin = true;
 
   const teacherNewAccessToken = teacherNewLogin.data.tokens.accessToken;
 
   logStep('2.9', 'Teacher Enrolls a New Student (POST /api/teachers/students)');
-  const enrollStudentRes = await requestJson(`${BASE_URL}/api/teachers/students`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${teacherNewAccessToken}` },
-    body: JSON.stringify({
-      firstName: 'Khadija',
-      lastName: 'Bello',
-      studentCode: '06209',
-      dateOfBirth: '2014-07-19',
-      gender: 'FEMALE',
-      pin: '1234',
-    }),
-  });
-  if (enrollStudentRes.status !== 201) throw new Error(`Teacher student enrollment failed: ${JSON.stringify(enrollStudentRes.data)}`);
-  logSuccess(`Teacher enrolled: ${enrollStudentRes.data.student.fullName} [Code: ${enrollStudentRes.data.student.studentCode}] -> Assigned to: ${enrollStudentRes.data.student.teacherName}`);
+  const enrollStudentRes = await requestJson(
+    `${BASE_URL}/api/teachers/students`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${teacherNewAccessToken}` },
+      body: JSON.stringify({
+        firstName: 'Khadija',
+        lastName: 'Bello',
+        studentCode: '06209',
+        dateOfBirth: '2014-07-19',
+        gender: 'FEMALE',
+        pin: '1234',
+      }),
+    },
+  );
+  if (enrollStudentRes.status !== 201)
+    throw new Error(
+      `Teacher student enrollment failed: ${JSON.stringify(enrollStudentRes.data)}`,
+    );
+  logSuccess(
+    `Teacher enrolled: ${enrollStudentRes.data.student.fullName} [Code: ${enrollStudentRes.data.student.studentCode}] -> Assigned to: ${enrollStudentRes.data.student.teacherName}`,
+  );
 
-  logStep('2.10', 'Teacher Fetches Classroom Roster (GET /api/teachers/students)');
-  const teacherRosterRes = await requestJson(`${BASE_URL}/api/teachers/students`, {
-    method: 'GET',
-    headers: { Authorization: `Bearer ${teacherNewAccessToken}` },
-  });
-  if (teacherRosterRes.status !== 200) throw new Error(`Teacher get roster failed: ${JSON.stringify(teacherRosterRes.data)}`);
-  logSuccess(`Classroom roster: ${teacherRosterRes.data.teacher.enrolledCount}/${teacherRosterRes.data.teacher.studentCapacity} enrolled: ${teacherRosterRes.data.students.map(s => `${s.fullName} [${s.studentCode}]`).join(', ')}`);
-
+  logStep(
+    '2.10',
+    'Teacher Fetches Classroom Roster (GET /api/teachers/students)',
+  );
+  const teacherRosterRes = await requestJson(
+    `${BASE_URL}/api/teachers/students`,
+    {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${teacherNewAccessToken}` },
+    },
+  );
+  if (teacherRosterRes.status !== 200)
+    throw new Error(
+      `Teacher get roster failed: ${JSON.stringify(teacherRosterRes.data)}`,
+    );
+  logSuccess(
+    `Classroom roster: ${teacherRosterRes.data.teacher.enrolledCount}/${teacherRosterRes.data.teacher.studentCapacity} enrolled: ${teacherRosterRes.data.students.map((s) => `${s.fullName} [${s.studentCode}]`).join(', ')}`,
+  );
 
   // ==========================================
   // PART 4: ADMIN FLOW
@@ -401,8 +504,11 @@ async function runAllRolesFlow() {
       fullName: 'Yusuf Hilside (System Admin)',
     }),
   });
-  if (adminReg.status !== 201) throw new Error(`Admin signup failed: ${JSON.stringify(adminReg.data)}`);
-  logSuccess(`Admin registered [Role: ${adminReg.data.user.role} | Status: ${adminReg.data.user.accountStatus}]`);
+  if (adminReg.status !== 201)
+    throw new Error(`Admin signup failed: ${JSON.stringify(adminReg.data)}`);
+  logSuccess(
+    `Admin registered [Role: ${adminReg.data.user.role} | Status: ${adminReg.data.user.accountStatus}]`,
+  );
   results.admin.signup = true;
 
   logStep('3.2', 'Resolving Admin OTP code');
@@ -411,7 +517,7 @@ async function runAllRolesFlow() {
      JOIN users u ON u.id = vc."userId" 
      WHERE u.email = $1 AND vc.type = 'EMAIL_VERIFICATION' AND vc."usedAt" IS NULL 
      ORDER BY vc."createdAt" DESC LIMIT 1`,
-    [adminEmail]
+    [adminEmail],
   );
   const adminOtp = resolveOtpFromHash(adminCodeRow.rows[0].codeHash);
   logNotice(`Retrieved 6-Digit OTP: [${adminOtp}] for ${adminEmail}`);
@@ -421,8 +527,11 @@ async function runAllRolesFlow() {
     method: 'POST',
     body: JSON.stringify({ email: adminEmail, code: adminOtp }),
   });
-  if (adminVerify.status !== 200) throw new Error(`Admin verify failed: ${JSON.stringify(adminVerify.data)}`);
-  logSuccess(`Admin email verified. Account Status: ${adminVerify.data.user.accountStatus}`);
+  if (adminVerify.status !== 200)
+    throw new Error(`Admin verify failed: ${JSON.stringify(adminVerify.data)}`);
+  logSuccess(
+    `Admin email verified. Account Status: ${adminVerify.data.user.accountStatus}`,
+  );
   results.admin.verification = true;
 
   logStep('3.4', 'Admin Login with initial password');
@@ -430,22 +539,29 @@ async function runAllRolesFlow() {
     method: 'POST',
     body: JSON.stringify({ email: adminEmail, password: initialPassword }),
   });
-  if (adminLogin1.status !== 200) throw new Error(`Admin login failed: ${JSON.stringify(adminLogin1.data)}`);
+  if (adminLogin1.status !== 200)
+    throw new Error(`Admin login failed: ${JSON.stringify(adminLogin1.data)}`);
   logSuccess(`Admin login succeeded. AccessToken generated.`);
   results.admin.initialLogin = true;
 
   const adminAccessToken = adminLogin1.data.tokens.accessToken;
 
   logStep('3.5', 'Admin Password Change (change-password)');
-  const adminChangePass = await requestJson(`${BASE_URL}/api/auth/change-password`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${adminAccessToken}` },
-    body: JSON.stringify({
-      currentPassword: initialPassword,
-      newPassword: changedPassword,
-    }),
-  });
-  if (adminChangePass.status !== 200) throw new Error(`Admin password change failed: ${JSON.stringify(adminChangePass.data)}`);
+  const adminChangePass = await requestJson(
+    `${BASE_URL}/api/auth/change-password`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${adminAccessToken}` },
+      body: JSON.stringify({
+        currentPassword: initialPassword,
+        newPassword: changedPassword,
+      }),
+    },
+  );
+  if (adminChangePass.status !== 200)
+    throw new Error(
+      `Admin password change failed: ${JSON.stringify(adminChangePass.data)}`,
+    );
   logSuccess(`Admin password changed successfully.`);
   results.admin.passwordChange = true;
 
@@ -454,7 +570,10 @@ async function runAllRolesFlow() {
     method: 'POST',
     body: JSON.stringify({ email: adminEmail, password: changedPassword }),
   });
-  if (adminNewLogin.status !== 200) throw new Error(`Admin new password login failed: ${JSON.stringify(adminNewLogin.data)}`);
+  if (adminNewLogin.status !== 200)
+    throw new Error(
+      `Admin new password login failed: ${JSON.stringify(adminNewLogin.data)}`,
+    );
   logSuccess(`Admin login with new password succeeded!`);
   results.admin.newPasswordLogin = true;
 
@@ -468,7 +587,10 @@ async function runAllRolesFlow() {
     method: 'POST',
     body: JSON.stringify({ email: parentEmail }),
   });
-  if (forgotRes.status !== 200) throw new Error(`Forgot password failed: ${JSON.stringify(forgotRes.data)}`);
+  if (forgotRes.status !== 200)
+    throw new Error(
+      `Forgot password failed: ${JSON.stringify(forgotRes.data)}`,
+    );
   logSuccess(`Forgot password initiated: "${forgotRes.data.message}"`);
 
   logStep('4.2', 'Resolving Password Reset OTP from database');
@@ -477,10 +599,12 @@ async function runAllRolesFlow() {
      JOIN users u ON u.id = vc."userId" 
      WHERE u.email = $1 AND vc.type = 'PASSWORD_RESET' AND vc."usedAt" IS NULL 
      ORDER BY vc."createdAt" DESC LIMIT 1`,
-    [parentEmail]
+    [parentEmail],
   );
   const resetOtp = resolveOtpFromHash(resetCodeRow.rows[0].codeHash);
-  logNotice(`Retrieved 6-Digit Password Reset OTP: [${resetOtp}] for ${parentEmail}`);
+  logNotice(
+    `Retrieved 6-Digit Password Reset OTP: [${resetOtp}] for ${parentEmail}`,
+  );
 
   logStep('4.3', 'Executing Password Reset with OTP');
   const resetRes = await requestJson(`${BASE_URL}/api/auth/reset-password`, {
@@ -491,34 +615,70 @@ async function runAllRolesFlow() {
       newPassword: resetPassword,
     }),
   });
-  if (resetRes.status !== 200) throw new Error(`Password reset failed: ${JSON.stringify(resetRes.data)}`);
+  if (resetRes.status !== 200)
+    throw new Error(`Password reset failed: ${JSON.stringify(resetRes.data)}`);
   logSuccess(`Password reset confirmed: "${resetRes.data.message}"`);
   results.forgotPasswordFlow.resetSuccess = true;
 
   logStep('4.4', 'Parent Login with Reset Password');
-  const parentResetLogin = await requestJson(`${BASE_URL}/api/auth/parent/login`, {
-    method: 'POST',
-    body: JSON.stringify({ email: parentEmail, password: resetPassword }),
-  });
-  if (parentResetLogin.status !== 200) throw new Error(`Login after reset failed: ${JSON.stringify(parentResetLogin.data)}`);
+  const parentResetLogin = await requestJson(
+    `${BASE_URL}/api/auth/parent/login`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ email: parentEmail, password: resetPassword }),
+    },
+  );
+  if (parentResetLogin.status !== 200)
+    throw new Error(
+      `Login after reset failed: ${JSON.stringify(parentResetLogin.data)}`,
+    );
   results.forgotPasswordFlow.loginWithResetPassword = true;
   const activeParentToken = parentResetLogin.data.tokens.accessToken;
-
 
   // ==========================================
   // PART 5: ROLE 4 - STUDENT AUTHENTICATION FLOW
   // ==========================================
   banner('ROLE 4: STUDENT AUTHENTICATION VIA STUDENT ID & PIN');
 
-  logStep('5.0', 'Seeding Prototype Students (Divine Ekubor 06201, Emma Wilson 06202, Bryan Williams 06204)');
-  const teacherRow = await query('SELECT tp.id, tp."schoolName" FROM teacher_profiles tp JOIN users u ON u.id = tp."userId" WHERE u.email = $1', [teacherEmail]);
+  logStep(
+    '5.0',
+    'Seeding Prototype Students (Divine Ekubor 06201, Emma Wilson 06202, Bryan Williams 06204)',
+  );
+  const teacherRow = await query(
+    'SELECT tp.id, tp."schoolName" FROM teacher_profiles tp JOIN users u ON u.id = tp."userId" WHERE u.email = $1',
+    [teacherEmail],
+  );
   const primaryTeacherId = teacherRow.rows[0]?.id;
   const pinHash = await argon2.hash('1234');
-  
+
   const studentList = [
-    { code: '06201', first: 'Divine', last: 'Ekubor', dob: '2014-05-14', gender: 'MALE', grade: 'Grade 5', room: 'Room 201' },
-    { code: '06202', first: 'Emma', last: 'Wilson', dob: '2014-08-22', gender: 'FEMALE', grade: 'Grade 5', room: 'Room 201' },
-    { code: '06204', first: 'Bryan', last: 'Williams', dob: '2014-02-10', gender: 'MALE', grade: 'Grade 5', room: 'Room 201' },
+    {
+      code: '06201',
+      first: 'Divine',
+      last: 'Ekubor',
+      dob: '2014-05-14',
+      gender: 'MALE',
+      grade: 'Grade 5',
+      room: 'Room 201',
+    },
+    {
+      code: '06202',
+      first: 'Emma',
+      last: 'Wilson',
+      dob: '2014-08-22',
+      gender: 'FEMALE',
+      grade: 'Grade 5',
+      room: 'Room 201',
+    },
+    {
+      code: '06204',
+      first: 'Bryan',
+      last: 'Williams',
+      dob: '2014-02-10',
+      gender: 'MALE',
+      grade: 'Grade 5',
+      room: 'Room 201',
+    },
   ];
 
   for (const s of studentList) {
@@ -527,29 +687,49 @@ async function runAllRolesFlow() {
     await query(
       `INSERT INTO users (id, email, "passwordHash", role, "accountStatus", "isEmailVerified", "emailVerifiedAt", "termsAccepted", "termsAcceptedAt", "createdAt", "updatedAt")
        VALUES ($1, $2, '', 'STUDENT', 'ACTIVE', true, NOW(), true, NOW(), NOW(), NOW())`,
-      [sUserId, sEmail]
+      [sUserId, sEmail],
     );
     await query(
       `INSERT INTO user_preferences (id, "userId", "pushNotificationsEnabled", "soundEnabled", "darkModeEnabled", "autoSyncEnabled", "createdAt", "updatedAt")
        VALUES ($1, $2, true, true, false, true, NOW(), NOW())`,
-      [crypto.randomUUID(), sUserId]
+      [crypto.randomUUID(), sUserId],
     );
     await query(
       `INSERT INTO students (id, "userId", "studentCode", "firstName", "lastName", "dateOfBirth", gender, grade, room, "accessPinHash", "primaryTeacherId", "createdAt", "updatedAt")
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())`,
-      [crypto.randomUUID(), sUserId, s.code, s.first, s.last, s.dob, s.gender, s.grade, s.room, pinHash, primaryTeacherId]
+      [
+        crypto.randomUUID(),
+        sUserId,
+        s.code,
+        s.first,
+        s.last,
+        s.dob,
+        s.gender,
+        s.grade,
+        s.room,
+        pinHash,
+        primaryTeacherId,
+      ],
     );
   }
   logSuccess(`3 prototype students seeded and assigned to Teacher Profile.`);
 
   logStep('5.1', 'Student Login via Student ID [06201] and PIN [1234]');
-  const studentLoginRes = await requestJson(`${BASE_URL}/api/auth/student/login`, {
-    method: 'POST',
-    body: JSON.stringify({ studentCode: '06201', pin: '1234' }),
-  });
-  if (studentLoginRes.status !== 200) throw new Error(`Student login failed: ${JSON.stringify(studentLoginRes.data)}`);
-  logSuccess(`Student [Divine Ekubor - 06201] logged in successfully! Role: ${studentLoginRes.data.user.role}`);
-  
+  const studentLoginRes = await requestJson(
+    `${BASE_URL}/api/auth/student/login`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ studentCode: '06201', pin: '1234' }),
+    },
+  );
+  if (studentLoginRes.status !== 200)
+    throw new Error(
+      `Student login failed: ${JSON.stringify(studentLoginRes.data)}`,
+    );
+  logSuccess(
+    `Student [Divine Ekubor - 06201] logged in successfully! Role: ${studentLoginRes.data.user.role}`,
+  );
+
   const studentAccessToken = studentLoginRes.data.tokens.accessToken;
 
   logStep('5.2', 'Student Profile Verification (/api/auth/me)');
@@ -557,15 +737,24 @@ async function runAllRolesFlow() {
     method: 'GET',
     headers: { Authorization: `Bearer ${studentAccessToken}` },
   });
-  if (studentMeRes.status !== 200) throw new Error(`Student /api/auth/me failed: ${JSON.stringify(studentMeRes.data)}`);
-  logSuccess(`Student profile verified: ${studentMeRes.data.profile.fullName} | Grade: ${studentMeRes.data.profile.grade} | Room: ${studentMeRes.data.profile.room}`);
+  if (studentMeRes.status !== 200)
+    throw new Error(
+      `Student /api/auth/me failed: ${JSON.stringify(studentMeRes.data)}`,
+    );
+  logSuccess(
+    `Student profile verified: ${studentMeRes.data.profile.fullName} | Grade: ${studentMeRes.data.profile.grade} | Room: ${studentMeRes.data.profile.room}`,
+  );
 
   logStep('5.3', 'Negative Test: Invalid PIN for Student [06201]');
-  const studentBadPin = await requestJson(`${BASE_URL}/api/auth/student/login`, {
-    method: 'POST',
-    body: JSON.stringify({ studentCode: '06201', pin: '0000' }),
-  });
-  if (studentBadPin.status !== 401) throw new Error(`Expected 401 for bad PIN, got: ${studentBadPin.status}`);
+  const studentBadPin = await requestJson(
+    `${BASE_URL}/api/auth/student/login`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ studentCode: '06201', pin: '0000' }),
+    },
+  );
+  if (studentBadPin.status !== 401)
+    throw new Error(`Expected 401 for bad PIN, got: ${studentBadPin.status}`);
   logSuccess(`Invalid PIN correctly rejected with 401 Unauthorized.`);
 
   // ==========================================
@@ -574,30 +763,42 @@ async function runAllRolesFlow() {
   banner('PARENT MULTI-CHILD ROSTERING (LINKING STUDENTS)');
 
   logStep('6.1', 'Parent links 1st Child [Emma Wilson - 06202]');
-  const linkChild1 = await requestJson(`${BASE_URL}/api/parents/students/link`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${activeParentToken}` },
-    body: JSON.stringify({
-      studentCode: '06202',
-      relationshipType: 'Mother',
-      isPrimaryContact: true,
-    }),
-  });
-  if (linkChild1.status !== 201) throw new Error(`Link child 1 failed: ${JSON.stringify(linkChild1.data)}`);
-  logSuccess(`Linked child: ${linkChild1.data.student.firstName} ${linkChild1.data.student.lastName} [06202]`);
+  const linkChild1 = await requestJson(
+    `${BASE_URL}/api/parents/students/link`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${activeParentToken}` },
+      body: JSON.stringify({
+        studentCode: '06202',
+        relationshipType: 'Mother',
+        isPrimaryContact: true,
+      }),
+    },
+  );
+  if (linkChild1.status !== 201)
+    throw new Error(`Link child 1 failed: ${JSON.stringify(linkChild1.data)}`);
+  logSuccess(
+    `Linked child: ${linkChild1.data.student.firstName} ${linkChild1.data.student.lastName} [06202]`,
+  );
 
   logStep('6.2', 'Parent links 2nd Child [Bryan Williams - 06204]');
-  const linkChild2 = await requestJson(`${BASE_URL}/api/parents/students/link`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${activeParentToken}` },
-    body: JSON.stringify({
-      studentCode: '06204',
-      relationshipType: 'Guardian',
-      isPrimaryContact: false,
-    }),
-  });
-  if (linkChild2.status !== 201) throw new Error(`Link child 2 failed: ${JSON.stringify(linkChild2.data)}`);
-  logSuccess(`Linked child: ${linkChild2.data.student.firstName} ${linkChild2.data.student.lastName} [06204]`);
+  const linkChild2 = await requestJson(
+    `${BASE_URL}/api/parents/students/link`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${activeParentToken}` },
+      body: JSON.stringify({
+        studentCode: '06204',
+        relationshipType: 'Guardian',
+        isPrimaryContact: false,
+      }),
+    },
+  );
+  if (linkChild2.status !== 201)
+    throw new Error(`Link child 2 failed: ${JSON.stringify(linkChild2.data)}`);
+  logSuccess(
+    `Linked child: ${linkChild2.data.student.firstName} ${linkChild2.data.student.lastName} [06204]`,
+  );
 
   logStep('6.3', 'Negative Test: Prevent duplicate linking of same child');
   const dupLink = await requestJson(`${BASE_URL}/api/parents/students/link`, {
@@ -605,16 +806,27 @@ async function runAllRolesFlow() {
     headers: { Authorization: `Bearer ${activeParentToken}` },
     body: JSON.stringify({ studentCode: '06202' }),
   });
-  if (dupLink.status !== 409) throw new Error(`Expected 409 Conflict for duplicate link, got: ${dupLink.status}`);
+  if (dupLink.status !== 409)
+    throw new Error(
+      `Expected 409 Conflict for duplicate link, got: ${dupLink.status}`,
+    );
   logSuccess(`Duplicate linking correctly rejected with 409 Conflict.`);
 
-  logStep('6.4', 'Parent fetches all linked children roster (/api/parents/students)');
+  logStep(
+    '6.4',
+    'Parent fetches all linked children roster (/api/parents/students)',
+  );
   const linkedRoster = await requestJson(`${BASE_URL}/api/parents/students`, {
     method: 'GET',
     headers: { Authorization: `Bearer ${activeParentToken}` },
   });
-  if (linkedRoster.status !== 200) throw new Error(`Get linked students failed: ${JSON.stringify(linkedRoster.data)}`);
-  logSuccess(`Parent has ${linkedRoster.data.length} linked children: ${linkedRoster.data.map(c => `${c.student.fullName} [${c.student.studentCode}]`).join(', ')}`);
+  if (linkedRoster.status !== 200)
+    throw new Error(
+      `Get linked students failed: ${JSON.stringify(linkedRoster.data)}`,
+    );
+  logSuccess(
+    `Parent has ${linkedRoster.data.length} linked children: ${linkedRoster.data.map((c) => `${c.student.fullName} [${c.student.studentCode}]`).join(', ')}`,
+  );
 
   // ==========================================
   // PART 7: USER PREFERENCES FLOW
@@ -626,8 +838,13 @@ async function runAllRolesFlow() {
     method: 'GET',
     headers: { Authorization: `Bearer ${activeParentToken}` },
   });
-  if (getPrefRes.status !== 200) throw new Error(`Get preferences failed: ${JSON.stringify(getPrefRes.data)}`);
-  logSuccess(`Default preferences: Push=${getPrefRes.data.pushNotificationsEnabled}, Sound=${getPrefRes.data.soundEnabled}, DarkMode=${getPrefRes.data.darkModeEnabled}`);
+  if (getPrefRes.status !== 200)
+    throw new Error(
+      `Get preferences failed: ${JSON.stringify(getPrefRes.data)}`,
+    );
+  logSuccess(
+    `Default preferences: Push=${getPrefRes.data.pushNotificationsEnabled}, Sound=${getPrefRes.data.soundEnabled}, DarkMode=${getPrefRes.data.darkModeEnabled}`,
+  );
 
   logStep('7.2', 'Update preferences to Dark Mode & muted sound');
   const patchPrefRes = await requestJson(`${BASE_URL}/api/users/preferences`, {
@@ -638,22 +855,34 @@ async function runAllRolesFlow() {
       soundEnabled: false,
     }),
   });
-  if (patchPrefRes.status !== 200) throw new Error(`Patch preferences failed: ${JSON.stringify(patchPrefRes.data)}`);
+  if (patchPrefRes.status !== 200)
+    throw new Error(
+      `Patch preferences failed: ${JSON.stringify(patchPrefRes.data)}`,
+    );
 
-  logSuccess(`Updated preferences: DarkMode=${patchPrefRes.data.darkModeEnabled}, Sound=${patchPrefRes.data.soundEnabled}`);
+  logSuccess(
+    `Updated preferences: DarkMode=${patchPrefRes.data.darkModeEnabled}, Sound=${patchPrefRes.data.soundEnabled}`,
+  );
 
   // ==========================================
   // PART 8: DAILY ATTENDANCE TRACKING FLOW
   // ==========================================
   banner('DAILY ATTENDANCE TRACKING (BATCH ROLL CALL & RBAC METRICS)');
 
-  const studentDbRows = await query(`SELECT id, "studentCode", "firstName", "lastName" FROM students WHERE "studentCode" IN ('06201', '06202', '06204')`);
+  const studentDbRows = await query(
+    `SELECT id, "studentCode", "firstName", "lastName" FROM students WHERE "studentCode" IN ('06201', '06202', '06204')`,
+  );
   const studentMap = {};
-  studentDbRows.rows.forEach((r) => { studentMap[r.studentCode] = r; });
+  studentDbRows.rows.forEach((r) => {
+    studentMap[r.studentCode] = r;
+  });
 
   const rollCallDate = '2026-09-26';
 
-  logStep('8.1', 'Teacher Marks Batch Roll Call for Classroom (POST /api/attendance/mark)');
+  logStep(
+    '8.1',
+    'Teacher Marks Batch Roll Call for Classroom (POST /api/attendance/mark)',
+  );
   const markRollCallRes = await requestJson(`${BASE_URL}/api/attendance/mark`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${teacherNewAccessToken}` },
@@ -678,8 +907,13 @@ async function runAllRolesFlow() {
       ],
     }),
   });
-  if (markRollCallRes.status !== 200) throw new Error(`Mark roll call failed: ${JSON.stringify(markRollCallRes.data)}`);
-  logSuccess(`Classroom roll call marked for 3 students. Count: ${markRollCallRes.data.count}`);
+  if (markRollCallRes.status !== 200)
+    throw new Error(
+      `Mark roll call failed: ${JSON.stringify(markRollCallRes.data)}`,
+    );
+  logSuccess(
+    `Classroom roll call marked for 3 students. Count: ${markRollCallRes.data.count}`,
+  );
 
   logStep('8.2', 'Teacher Re-Marks Roll Call (Atomic Upsert Idempotency)');
   const remarkRes = await requestJson(`${BASE_URL}/api/attendance/mark`, {
@@ -696,100 +930,193 @@ async function runAllRolesFlow() {
       ],
     }),
   });
-  if (remarkRes.status !== 200) throw new Error(`Re-marking roll call failed: ${JSON.stringify(remarkRes.data)}`);
-  logSuccess(`Roll call update successful. Student [06204] updated to EXCUSED.`);
+  if (remarkRes.status !== 200)
+    throw new Error(
+      `Re-marking roll call failed: ${JSON.stringify(remarkRes.data)}`,
+    );
+  logSuccess(
+    `Roll call update successful. Student [06204] updated to EXCUSED.`,
+  );
 
-  logStep('8.3', 'Teacher Retrieves Live Classroom Attendance & Rates (GET /api/attendance/class)');
-  const classAttendanceRes = await requestJson(`${BASE_URL}/api/attendance/class?date=${rollCallDate}`, {
-    method: 'GET',
-    headers: { Authorization: `Bearer ${teacherNewAccessToken}` },
-  });
-  if (classAttendanceRes.status !== 200) throw new Error(`Get class attendance failed: ${JSON.stringify(classAttendanceRes.data)}`);
+  logStep(
+    '8.3',
+    'Teacher Retrieves Live Classroom Attendance & Rates (GET /api/attendance/class)',
+  );
+  const classAttendanceRes = await requestJson(
+    `${BASE_URL}/api/attendance/class?date=${rollCallDate}`,
+    {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${teacherNewAccessToken}` },
+    },
+  );
+  if (classAttendanceRes.status !== 200)
+    throw new Error(
+      `Get class attendance failed: ${JSON.stringify(classAttendanceRes.data)}`,
+    );
   const classSummary = classAttendanceRes.data.summary;
-  logSuccess(`Class Summary on ${rollCallDate}: Total=${classSummary.total}, Present=${classSummary.percentages.PRESENT}%, Late=${classSummary.percentages.LATE}%, Excused=${classSummary.percentages.EXCUSED}%, Absent=${classSummary.percentages.ABSENT}%`);
+  logSuccess(
+    `Class Summary on ${rollCallDate}: Total=${classSummary.total}, Present=${classSummary.percentages.PRESENT}%, Late=${classSummary.percentages.LATE}%, Excused=${classSummary.percentages.EXCUSED}%, Absent=${classSummary.percentages.ABSENT}%`,
+  );
 
-  logStep('8.4', 'Parent Views Linked Child Attendance (GET /api/attendance/student/:id)');
-  const parentViewRes = await requestJson(`${BASE_URL}/api/attendance/student/${studentMap['06202'].id}`, {
-    method: 'GET',
-    headers: { Authorization: `Bearer ${activeParentToken}` },
-  });
-  if (parentViewRes.status !== 200) throw new Error(`Parent view attendance failed: ${JSON.stringify(parentViewRes.data)}`);
-  logSuccess(`Parent verified attendance for linked child [Emma Wilson]: Status=${parentViewRes.data.records[0].status}, Notes="${parentViewRes.data.records[0].notes}"`);
+  logStep(
+    '8.4',
+    'Parent Views Linked Child Attendance (GET /api/attendance/student/:id)',
+  );
+  const parentViewRes = await requestJson(
+    `${BASE_URL}/api/attendance/student/${studentMap['06202'].id}`,
+    {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${activeParentToken}` },
+    },
+  );
+  if (parentViewRes.status !== 200)
+    throw new Error(
+      `Parent view attendance failed: ${JSON.stringify(parentViewRes.data)}`,
+    );
+  logSuccess(
+    `Parent verified attendance for linked child [Emma Wilson]: Status=${parentViewRes.data.records[0].status}, Notes="${parentViewRes.data.records[0].notes}"`,
+  );
 
-  logStep('8.5', 'Negative Security Test: Parent Views Unlinked Student (Must reject with 403)');
-  const parentUnlinkedRes = await requestJson(`${BASE_URL}/api/attendance/student/${studentMap['06201'].id}`, {
-    method: 'GET',
-    headers: { Authorization: `Bearer ${activeParentToken}` },
-  });
-  if (parentUnlinkedRes.status !== 403) throw new Error(`Expected 403 for unlinked student attendance view, got: ${parentUnlinkedRes.status}`);
-  logSecurity(`Security verified: Parent view of unlinked student rejected with 403 Forbidden.`);
+  logStep(
+    '8.5',
+    'Negative Security Test: Parent Views Unlinked Student (Must reject with 403)',
+  );
+  const parentUnlinkedRes = await requestJson(
+    `${BASE_URL}/api/attendance/student/${studentMap['06201'].id}`,
+    {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${activeParentToken}` },
+    },
+  );
+  if (parentUnlinkedRes.status !== 403)
+    throw new Error(
+      `Expected 403 for unlinked student attendance view, got: ${parentUnlinkedRes.status}`,
+    );
+  logSecurity(
+    `Security verified: Parent view of unlinked student rejected with 403 Forbidden.`,
+  );
 
-  logStep('8.6', 'Student Views Their Own Attendance (GET /api/attendance/student/:id)');
-  const studentSelfRes = await requestJson(`${BASE_URL}/api/attendance/student/${studentMap['06201'].id}`, {
-    method: 'GET',
-    headers: { Authorization: `Bearer ${studentAccessToken}` },
-  });
-  if (studentSelfRes.status !== 200) throw new Error(`Student self attendance view failed: ${JSON.stringify(studentSelfRes.data)}`);
-  logSuccess(`Student [Divine Ekubor] retrieved own attendance: Status=${studentSelfRes.data.records[0].status}`);
+  logStep(
+    '8.6',
+    'Student Views Their Own Attendance (GET /api/attendance/student/:id)',
+  );
+  const studentSelfRes = await requestJson(
+    `${BASE_URL}/api/attendance/student/${studentMap['06201'].id}`,
+    {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${studentAccessToken}` },
+    },
+  );
+  if (studentSelfRes.status !== 200)
+    throw new Error(
+      `Student self attendance view failed: ${JSON.stringify(studentSelfRes.data)}`,
+    );
+  logSuccess(
+    `Student [Divine Ekubor] retrieved own attendance: Status=${studentSelfRes.data.records[0].status}`,
+  );
 
-  logStep('8.7', 'Negative Security Test: Student Views Classmate Attendance (Must reject with 403)');
-  const studentOtherRes = await requestJson(`${BASE_URL}/api/attendance/student/${studentMap['06202'].id}`, {
-    method: 'GET',
-    headers: { Authorization: `Bearer ${studentAccessToken}` },
-  });
-  if (studentOtherRes.status !== 403) throw new Error(`Expected 403 for student viewing classmate, got: ${studentOtherRes.status}`);
-  logSecurity(`Security verified: Student viewing classmate attendance rejected with 403 Forbidden.`);
+  logStep(
+    '8.7',
+    'Negative Security Test: Student Views Classmate Attendance (Must reject with 403)',
+  );
+  const studentOtherRes = await requestJson(
+    `${BASE_URL}/api/attendance/student/${studentMap['06202'].id}`,
+    {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${studentAccessToken}` },
+    },
+  );
+  if (studentOtherRes.status !== 403)
+    throw new Error(
+      `Expected 403 for student viewing classmate, got: ${studentOtherRes.status}`,
+    );
+  logSecurity(
+    `Security verified: Student viewing classmate attendance rejected with 403 Forbidden.`,
+  );
 
   logStep('8.8', 'Admin Platform-Wide Attendance View');
-  const adminViewRes = await requestJson(`${BASE_URL}/api/attendance/student/${studentMap['06201'].id}`, {
-    method: 'GET',
-    headers: { Authorization: `Bearer ${adminAccessToken}` },
-  });
-  if (adminViewRes.status !== 200) throw new Error(`Admin attendance view failed: ${JSON.stringify(adminViewRes.data)}`);
-  logSuccess(`Admin platform-wide attendance access verified for student [06201].`);
+  const adminViewRes = await requestJson(
+    `${BASE_URL}/api/attendance/student/${studentMap['06201'].id}`,
+    {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${adminAccessToken}` },
+    },
+  );
+  if (adminViewRes.status !== 200)
+    throw new Error(
+      `Admin attendance view failed: ${JSON.stringify(adminViewRes.data)}`,
+    );
+  logSuccess(
+    `Admin platform-wide attendance access verified for student [06201].`,
+  );
 
   // ==========================================
   // PART 9: ACADEMIC SESSIONS & GRADEBOOK FLOW
   // ==========================================
   banner('ACADEMIC SESSIONS, SUBJECTS & CONTINUOUS ASSESSMENT GRADEBOOK');
 
-  logStep('9.1', 'Teacher Initializes Current Academic Session (POST /api/academic/sessions)');
-  const createSessionRes = await requestJson(`${BASE_URL}/api/academic/sessions`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${teacherNewAccessToken}` },
-    body: JSON.stringify({
-      sessionYear: '2024/2025',
-      termName: 'Term 1',
-      isCurrent: true,
-      startDate: '2024-09-01',
-      endDate: '2024-12-15',
-    }),
-  });
-  if (createSessionRes.status !== 201) throw new Error(`Create session failed: ${JSON.stringify(createSessionRes.data)}`);
+  logStep(
+    '9.1',
+    'Teacher Initializes Current Academic Session (POST /api/academic/sessions)',
+  );
+  const createSessionRes = await requestJson(
+    `${BASE_URL}/api/academic/sessions`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${teacherNewAccessToken}` },
+      body: JSON.stringify({
+        sessionYear: '2024/2025',
+        termName: 'Term 1',
+        isCurrent: true,
+        startDate: '2024-09-01',
+        endDate: '2024-12-15',
+      }),
+    },
+  );
+  if (createSessionRes.status !== 201)
+    throw new Error(
+      `Create session failed: ${JSON.stringify(createSessionRes.data)}`,
+    );
   const activeSession = createSessionRes.data;
-  logSuccess(`Academic Session created: ${activeSession.sessionYear} - ${activeSession.termName} [ID: ${activeSession.id}]`);
+  logSuccess(
+    `Academic Session created: ${activeSession.sessionYear} - ${activeSession.termName} [ID: ${activeSession.id}]`,
+  );
 
-  logStep('9.2', 'Teacher Adds Curriculum Subjects (POST /api/academic/subjects)');
-  const mathSubjectRes = await requestJson(`${BASE_URL}/api/academic/subjects`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${teacherNewAccessToken}` },
-    body: JSON.stringify({ name: 'Mathematics', code: 'MATH-101' }),
-  });
-  const scienceSubjectRes = await requestJson(`${BASE_URL}/api/academic/subjects`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${teacherNewAccessToken}` },
-    body: JSON.stringify({ name: 'General Science', code: 'SCI-101' }),
-  });
+  logStep(
+    '9.2',
+    'Teacher Adds Curriculum Subjects (POST /api/academic/subjects)',
+  );
+  const mathSubjectRes = await requestJson(
+    `${BASE_URL}/api/academic/subjects`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${teacherNewAccessToken}` },
+      body: JSON.stringify({ name: 'Mathematics', code: 'MATH-101' }),
+    },
+  );
+  const scienceSubjectRes = await requestJson(
+    `${BASE_URL}/api/academic/subjects`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${teacherNewAccessToken}` },
+      body: JSON.stringify({ name: 'General Science', code: 'SCI-101' }),
+    },
+  );
   if (mathSubjectRes.status !== 201 || scienceSubjectRes.status !== 201) {
     throw new Error(`Create subjects failed`);
   }
   const mathSubject = mathSubjectRes.data;
   const scienceSubject = scienceSubjectRes.data;
-  logSuccess(`Subjects registered: ${mathSubject.name} [${mathSubject.code}], ${scienceSubject.name} [${scienceSubject.code}]`);
+  logSuccess(
+    `Subjects registered: ${mathSubject.name} [${mathSubject.code}], ${scienceSubject.name} [${scienceSubject.code}]`,
+  );
 
-  logStep('9.3', 'Teacher Records Continuous Assessments & Exam Marks (POST /api/grades/assessments)');
+  logStep(
+    '9.3',
+    'Teacher Records Continuous Assessments & Exam Marks (POST /api/grades/assessments)',
+  );
   const studentDivine = studentMap['06201'];
-  
+
   // Math Test (CA)
   const mathTestRes = await requestJson(`${BASE_URL}/api/grades/assessments`, {
     method: 'POST',
@@ -806,7 +1133,10 @@ async function runAllRolesFlow() {
       notes: 'Exceptional precision in quadratic equations',
     }),
   });
-  if (mathTestRes.status !== 201) throw new Error(`Record Math Test failed: ${JSON.stringify(mathTestRes.data)}`);
+  if (mathTestRes.status !== 201)
+    throw new Error(
+      `Record Math Test failed: ${JSON.stringify(mathTestRes.data)}`,
+    );
 
   // Math Exam
   const mathExamRes = await requestJson(`${BASE_URL}/api/grades/assessments`, {
@@ -823,7 +1153,10 @@ async function runAllRolesFlow() {
       evaluationDate: '2026-09-25',
     }),
   });
-  if (mathExamRes.status !== 201) throw new Error(`Record Math Exam failed: ${JSON.stringify(mathExamRes.data)}`);
+  if (mathExamRes.status !== 201)
+    throw new Error(
+      `Record Math Exam failed: ${JSON.stringify(mathExamRes.data)}`,
+    );
 
   // Science Test (CA)
   const sciTestRes = await requestJson(`${BASE_URL}/api/grades/assessments`, {
@@ -840,29 +1173,56 @@ async function runAllRolesFlow() {
       evaluationDate: '2026-09-22',
     }),
   });
-  if (sciTestRes.status !== 201) throw new Error(`Record Science Test failed: ${JSON.stringify(sciTestRes.data)}`);
+  if (sciTestRes.status !== 201)
+    throw new Error(
+      `Record Science Test failed: ${JSON.stringify(sciTestRes.data)}`,
+    );
 
-  logSuccess(`Recorded 3 assessments: Math CA (90%), Math Exam (95%), Science CA (85%) with automatic letter grades.`);
+  logSuccess(
+    `Recorded 3 assessments: Math CA (90%), Math Exam (95%), Science CA (85%) with automatic letter grades.`,
+  );
 
-  logStep('9.4', 'Teacher Views Classroom Gradebook & Averages (GET /api/grades/class)');
+  logStep(
+    '9.4',
+    'Teacher Views Classroom Gradebook & Averages (GET /api/grades/class)',
+  );
   const classGradesRes = await requestJson(`${BASE_URL}/api/grades/class`, {
     method: 'GET',
     headers: { Authorization: `Bearer ${teacherNewAccessToken}` },
   });
-  if (classGradesRes.status !== 200) throw new Error(`Get class grades failed: ${JSON.stringify(classGradesRes.data)}`);
+  if (classGradesRes.status !== 200)
+    throw new Error(
+      `Get class grades failed: ${JSON.stringify(classGradesRes.data)}`,
+    );
   const classGradeStats = classGradesRes.data.summary;
-  logSuccess(`Class Gradebook Stats: Total Assessments=${classGradeStats.totalRecords}, Average Score=${classGradeStats.averageScore}%, Highest=${classGradeStats.highestScore}%, Lowest=${classGradeStats.lowestScore}%`);
+  logSuccess(
+    `Class Gradebook Stats: Total Assessments=${classGradeStats.totalRecords}, Average Score=${classGradeStats.averageScore}%, Highest=${classGradeStats.highestScore}%, Lowest=${classGradeStats.lowestScore}%`,
+  );
 
-  logStep('9.5', 'Student Views Personal Report Card & Earned Badges (GET /api/grades/student/:id)');
-  const studentReportRes = await requestJson(`${BASE_URL}/api/grades/student/${studentDivine.id}`, {
-    method: 'GET',
-    headers: { Authorization: `Bearer ${studentAccessToken}` },
-  });
-  if (studentReportRes.status !== 200) throw new Error(`Student report card view failed: ${JSON.stringify(studentReportRes.data)}`);
+  logStep(
+    '9.5',
+    'Student Views Personal Report Card & Earned Badges (GET /api/grades/student/:id)',
+  );
+  const studentReportRes = await requestJson(
+    `${BASE_URL}/api/grades/student/${studentDivine.id}`,
+    {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${studentAccessToken}` },
+    },
+  );
+  if (studentReportRes.status !== 200)
+    throw new Error(
+      `Student report card view failed: ${JSON.stringify(studentReportRes.data)}`,
+    );
   const studentReport = studentReportRes.data;
-  logSuccess(`Student [${studentReport.student.firstName}] Term Average: ${studentReport.summary.overallAverage}% (${studentReport.summary.overallGradeLetter}) | Badges: ${studentReport.badges.join(', ')}`);
+  logSuccess(
+    `Student [${studentReport.student.firstName}] Term Average: ${studentReport.summary.overallAverage}% (${studentReport.summary.overallGradeLetter}) | Badges: ${studentReport.badges.join(', ')}`,
+  );
 
-  logStep('9.6', 'Parent Views Linked Child Report Card (GET /api/grades/student/:id)');
+  logStep(
+    '9.6',
+    'Parent Views Linked Child Report Card (GET /api/grades/student/:id)',
+  );
   // Parent is linked to 06202 Emma and 06204 Bryan; let's record a score for Emma so parent views it
   const studentEmma = studentMap['06202'];
   await requestJson(`${BASE_URL}/api/grades/assessments`, {
@@ -879,42 +1239,77 @@ async function runAllRolesFlow() {
       evaluationDate: '2026-09-25',
     }),
   });
-  const parentChildReportRes = await requestJson(`${BASE_URL}/api/grades/student/${studentEmma.id}`, {
-    method: 'GET',
-    headers: { Authorization: `Bearer ${activeParentToken}` },
-  });
-  if (parentChildReportRes.status !== 200) throw new Error(`Parent child report view failed: ${JSON.stringify(parentChildReportRes.data)}`);
-  logSuccess(`Parent verified report card for linked child [${studentEmma.firstName} ${studentEmma.lastName}]: Average=${parentChildReportRes.data.summary.overallAverage}%`);
+  const parentChildReportRes = await requestJson(
+    `${BASE_URL}/api/grades/student/${studentEmma.id}`,
+    {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${activeParentToken}` },
+    },
+  );
+  if (parentChildReportRes.status !== 200)
+    throw new Error(
+      `Parent child report view failed: ${JSON.stringify(parentChildReportRes.data)}`,
+    );
+  logSuccess(
+    `Parent verified report card for linked child [${studentEmma.firstName} ${studentEmma.lastName}]: Average=${parentChildReportRes.data.summary.overallAverage}%`,
+  );
 
-  logStep('9.7', 'Negative Security Test: Parent Views Unlinked Student Grades (Must reject with 403)');
-  const parentUnlinkedGradesRes = await requestJson(`${BASE_URL}/api/grades/student/${studentDivine.id}`, {
-    method: 'GET',
-    headers: { Authorization: `Bearer ${activeParentToken}` },
-  });
-  if (parentUnlinkedGradesRes.status !== 403) throw new Error(`Expected 403 for parent viewing unlinked grades, got: ${parentUnlinkedGradesRes.status}`);
-  logSecurity(`Security verified: Parent view of unlinked student grades rejected with 403 Forbidden.`);
+  logStep(
+    '9.7',
+    'Negative Security Test: Parent Views Unlinked Student Grades (Must reject with 403)',
+  );
+  const parentUnlinkedGradesRes = await requestJson(
+    `${BASE_URL}/api/grades/student/${studentDivine.id}`,
+    {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${activeParentToken}` },
+    },
+  );
+  if (parentUnlinkedGradesRes.status !== 403)
+    throw new Error(
+      `Expected 403 for parent viewing unlinked grades, got: ${parentUnlinkedGradesRes.status}`,
+    );
+  logSecurity(
+    `Security verified: Parent view of unlinked student grades rejected with 403 Forbidden.`,
+  );
 
-  logStep('9.8', 'Negative Security Test: Student Views Classmate Report Card (Must reject with 403)');
-  const studentClassmateGradesRes = await requestJson(`${BASE_URL}/api/grades/student/${studentEmma.id}`, {
-    method: 'GET',
-    headers: { Authorization: `Bearer ${studentAccessToken}` },
-  });
-  if (studentClassmateGradesRes.status !== 403) throw new Error(`Expected 403 for student viewing classmate grades, got: ${studentClassmateGradesRes.status}`);
-  logSecurity(`Security verified: Student viewing classmate report card rejected with 403 Forbidden.`);
+  logStep(
+    '9.8',
+    'Negative Security Test: Student Views Classmate Report Card (Must reject with 403)',
+  );
+  const studentClassmateGradesRes = await requestJson(
+    `${BASE_URL}/api/grades/student/${studentEmma.id}`,
+    {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${studentAccessToken}` },
+    },
+  );
+  if (studentClassmateGradesRes.status !== 403)
+    throw new Error(
+      `Expected 403 for student viewing classmate grades, got: ${studentClassmateGradesRes.status}`,
+    );
+  logSecurity(
+    `Security verified: Student viewing classmate report card rejected with 403 Forbidden.`,
+  );
 
   logStep('9.9', 'Admin Platform-Wide Grade Review');
-  const adminGradeViewRes = await requestJson(`${BASE_URL}/api/grades/student/${studentDivine.id}`, {
-    method: 'GET',
-    headers: { Authorization: `Bearer ${adminAccessToken}` },
-  });
-  if (adminGradeViewRes.status !== 200) throw new Error(`Admin grade review failed: ${JSON.stringify(adminGradeViewRes.data)}`);
+  const adminGradeViewRes = await requestJson(
+    `${BASE_URL}/api/grades/student/${studentDivine.id}`,
+    {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${adminAccessToken}` },
+    },
+  );
+  if (adminGradeViewRes.status !== 200)
+    throw new Error(
+      `Admin grade review failed: ${JSON.stringify(adminGradeViewRes.data)}`,
+    );
   logSuccess(`Admin platform-wide grade access verified for student [06201].`);
 
   // ==========================================
   // PART 10: FINAL DATABASE INTEGRITY REPORT
   // ==========================================
   banner('FINAL DATABASE & SECURITY REPORT');
-
 
   const finalUsers = await query(`
     SELECT email, role, "accountStatus", "isEmailVerified", "emailVerifiedAt" 
@@ -924,19 +1319,27 @@ async function runAllRolesFlow() {
   console.log(`Total Active Users in Database: ${finalUsers.rows.length}`);
   console.table(finalUsers.rows);
 
-  const tokensCount = await query(`SELECT count(*)::int as count FROM refresh_tokens`);
-  const codesCount = await query(`SELECT count(*)::int as count FROM verification_codes`);
+  const tokensCount = await query(
+    `SELECT count(*)::int as count FROM refresh_tokens`,
+  );
+  const codesCount = await query(
+    `SELECT count(*)::int as count FROM verification_codes`,
+  );
   console.log(`Total Verification Codes Logged: ${codesCount.rows[0].count}`);
   console.log(`Active Refresh Tokens in DB:    ${tokensCount.rows[0].count}\n`);
 
-  console.log(`${colors.green}${colors.bright}ALL 4 PERSONAS (PARENT, TEACHER, ADMIN, STUDENT) SUCCESSFULLY TESTED THROUGH COMPLETE AUTH LIFECYCLES!${colors.reset}`);
-
+  console.log(
+    `${colors.green}${colors.bright}ALL 4 PERSONAS (PARENT, TEACHER, ADMIN, STUDENT) SUCCESSFULLY TESTED THROUGH COMPLETE AUTH LIFECYCLES!${colors.reset}`,
+  );
 
   await pool.end();
 }
 
 runAllRolesFlow().catch(async (err) => {
-  console.error(`\n${colors.red}${colors.bright}SIMULATION RUNTIME ERROR:${colors.reset}`, err);
+  console.error(
+    `\n${colors.red}${colors.bright}SIMULATION RUNTIME ERROR:${colors.reset}`,
+    err,
+  );
   await pool.end().catch(() => {});
   process.exit(1);
 });

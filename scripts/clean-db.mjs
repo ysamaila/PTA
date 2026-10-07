@@ -1,7 +1,10 @@
 import pg from 'pg';
 import 'dotenv/config';
 
-const connectionString = (process.env.DATABASE_URL || '').replace('&channel_binding=require', '');
+const connectionString = (process.env.DATABASE_URL || '').replace(
+  '&channel_binding=require',
+  '',
+);
 const pool = new pg.Pool({
   connectionString,
   ssl: { rejectUnauthorized: false },
@@ -20,7 +23,7 @@ async function query(text, params) {
 
 async function cleanDatabase() {
   console.log('Cleaning database...');
-  
+
   await query(`
     TRUNCATE TABLE 
       grade_assessments,
@@ -60,7 +63,7 @@ async function cleanDatabase() {
   await pool.end();
 }
 
-cleanDatabase().catch(err => {
+cleanDatabase().catch((err) => {
   console.error('Failed to clean database:', err);
   process.exit(1);
 });

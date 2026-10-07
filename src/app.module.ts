@@ -17,6 +17,7 @@ import { GradesModule } from './grades/grades.module.js';
 import { HomeworkModule } from './homework/homework.module.js';
 import { MessagingModule } from './messaging/messaging.module.js';
 import { BehaviorModule } from './behavior/behavior.module.js';
+import { UploadModule } from './upload/upload.module.js';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter.js';
 
 @Module({
@@ -44,6 +45,7 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter.js';
     HomeworkModule,
     MessagingModule,
     BehaviorModule,
+    UploadModule,
   ],
 
   controllers: [AppController],

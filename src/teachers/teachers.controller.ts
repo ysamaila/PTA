@@ -5,16 +5,21 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  Patch,
   Post,
+  UploadedFiles,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiConsumes,
   ApiOperation,
   ApiParam,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { AnyFilesInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../common/guards/roles.guard.js';
 import { Roles } from '../common/decorators/roles.decorator.js';
@@ -22,6 +27,8 @@ import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import { Role } from '../common/enums/index.js';
 import { TeachersService } from './teachers.service.js';
 import { CreateStudentDto } from './dto/create-student.dto.js';
+import { UpdateStudentDto } from './dto/update-student.dto.js';
+import { UploadService } from '../upload/upload.service.js';
 
 @ApiTags('Teacher Classroom & Student Rostering')
 @Controller('api/teachers/students')
@@ -29,14 +36,19 @@ import { CreateStudentDto } from './dto/create-student.dto.js';
 @Roles(Role.TEACHER)
 @ApiBearerAuth()
 export class TeachersController {
-  constructor(private readonly teachersService: TeachersService) {}
+  constructor(
+    private readonly teachersService: TeachersService,
+    private readonly uploadService: UploadService,
+  ) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @UseInterceptors(AnyFilesInterceptor())
+  @ApiConsumes('multipart/form-data', 'application/json')
   @ApiOperation({
     summary: 'Enroll/roster a new student in teacher classroom',
     description:
-      'Creates student profile, internal login account, sets access PIN, and assigns to homeroom roster.',
+      'Creates student profile, internal login account, sets access PIN, and assigns to homeroom roster. Accepts either multipart form with avatar file or JSON with avatarUrl.',
   })
   @ApiResponse({
     status: 201,
@@ -57,7 +69,21 @@ export class TeachersController {
   async createStudent(
     @CurrentUser('id') teacherUserId: string,
     @Body() dto: CreateStudentDto,
+    @UploadedFiles() files?: Express.Multer.File[],
   ) {
+    const avatarFile =
+      files?.find((f) =>
+        ['avatar', 'file', 'image', 'photo'].includes(f.fieldname),
+      ) || files?.[0];
+
+    if (avatarFile) {
+      const uploadResult = await this.uploadService.uploadFile(
+        avatarFile,
+        'pta/avatars',
+      );
+      dto.avatarUrl = uploadResult.secureUrl;
+    }
+
     return this.teachersService.createStudent(teacherUserId, dto);
   }
 
@@ -93,5 +119,44 @@ export class TeachersController {
     @Param('id') studentId: string,
   ) {
     return this.teachersService.getStudentById(teacherUserId, studentId);
+  }
+
+  @Patch(':id')
+  @UseInterceptors(AnyFilesInterceptor())
+  @ApiConsumes('multipart/form-data', 'application/json')
+  @ApiOperation({
+    summary: 'Update student details or avatar image',
+    description:
+      'Allows teacher to update student name, date of birth, grade, room, or avatarUrl (accepts multipart file or JSON).',
+  })
+  @ApiParam({ name: 'id', description: 'Student UUID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Student updated successfully',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Student not found in teacher roster',
+  })
+  async updateStudent(
+    @CurrentUser('id') teacherUserId: string,
+    @Param('id') studentId: string,
+    @Body() dto: UpdateStudentDto,
+    @UploadedFiles() files?: Express.Multer.File[],
+  ) {
+    const avatarFile =
+      files?.find((f) =>
+        ['avatar', 'file', 'image', 'photo'].includes(f.fieldname),
+      ) || files?.[0];
+
+    if (avatarFile) {
+      const uploadResult = await this.uploadService.uploadFile(
+        avatarFile,
+        'pta/avatars',
+      );
+      dto.avatarUrl = uploadResult.secureUrl;
+    }
+
+    return this.teachersService.updateStudent(teacherUserId, studentId, dto);
   }
 }

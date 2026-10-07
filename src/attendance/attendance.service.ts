@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../database/prisma.service.js';
 import { AttendanceStatus, Role } from '../common/enums/index.js';
 import { MarkAttendanceDto } from './dto/mark-attendance.dto.js';
@@ -144,20 +145,21 @@ export class AttendanceService {
       );
     }
 
-    const where: any = {
+    const where: Prisma.AttendanceRecordWhereInput = {
       teacherId: teacherProfile.id,
     };
 
     if (filter?.date) {
       where.date = this.normalizeDate(filter.date);
     } else if (filter?.startDate || filter?.endDate) {
-      where.date = {};
+      const dateFilter: Prisma.DateTimeFilter = {};
       if (filter.startDate) {
-        where.date.gte = this.normalizeDate(filter.startDate);
+        dateFilter.gte = this.normalizeDate(filter.startDate);
       }
       if (filter.endDate) {
-        where.date.lte = this.normalizeDate(filter.endDate);
+        dateFilter.lte = this.normalizeDate(filter.endDate);
       }
+      where.date = dateFilter;
     }
 
     if (filter?.status) {
@@ -175,6 +177,7 @@ export class AttendanceService {
             studentCode: true,
             grade: true,
             room: true,
+            avatarUrl: true,
           },
         },
       },
@@ -241,20 +244,21 @@ export class AttendanceService {
       }
     }
 
-    const where: any = {
+    const where: Prisma.AttendanceRecordWhereInput = {
       studentId: student.id,
     };
 
     if (filter?.date) {
       where.date = this.normalizeDate(filter.date);
     } else if (filter?.startDate || filter?.endDate) {
-      where.date = {};
+      const dateFilter: Prisma.DateTimeFilter = {};
       if (filter.startDate) {
-        where.date.gte = this.normalizeDate(filter.startDate);
+        dateFilter.gte = this.normalizeDate(filter.startDate);
       }
       if (filter.endDate) {
-        where.date.lte = this.normalizeDate(filter.endDate);
+        dateFilter.lte = this.normalizeDate(filter.endDate);
       }
+      where.date = dateFilter;
     }
 
     if (filter?.status) {
@@ -276,6 +280,7 @@ export class AttendanceService {
         studentCode: student.studentCode,
         grade: student.grade,
         room: student.room,
+        avatarUrl: student.avatarUrl,
       },
       summary,
       records,

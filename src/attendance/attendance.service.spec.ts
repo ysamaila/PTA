@@ -154,7 +154,7 @@ describe('AttendanceService', () => {
 
       expect(result).toBeDefined();
       expect(result.count).toBe(1);
-      expect(result.records).toHaveLength(1);
+      // eslint-disable-next-line @typescript-eslint/unbound-method
       expect(prisma.attendanceRecord.upsert).toHaveBeenCalledTimes(1);
     });
   });

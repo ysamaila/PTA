@@ -77,4 +77,45 @@ export class CreateStudentDto {
   @IsString()
   @IsOptional()
   room?: string;
+
+  @ApiPropertyOptional({
+    example:
+      'https://res.cloudinary.com/dexcjehcfive/image/upload/v1234/pta/student-avatar.jpg',
+    description: 'Hosted avatar or profile image URL for the student',
+  })
+  @IsString()
+  @IsOptional()
+  avatarUrl?: string;
+
+  @ApiPropertyOptional({
+    type: 'string',
+    format: 'binary',
+    description: 'Optional avatar file attachment (multipart/form-data)',
+  })
+  @IsOptional()
+  avatar?: any;
+
+  @ApiPropertyOptional({
+    type: 'string',
+    format: 'binary',
+    description: 'Optional file attachment (multipart/form-data)',
+  })
+  @IsOptional()
+  file?: any;
+
+  @ApiPropertyOptional({
+    type: 'string',
+    format: 'binary',
+    description: 'Optional image attachment (multipart/form-data)',
+  })
+  @IsOptional()
+  image?: any;
+
+  @ApiPropertyOptional({
+    type: 'string',
+    format: 'binary',
+    description: 'Optional photo attachment (multipart/form-data)',
+  })
+  @IsOptional()
+  photo?: any;
 }

@@ -36,6 +36,7 @@ describe('TeachersService', () => {
             student: {
               findUnique: jest.fn(),
               findFirst: jest.fn(),
+              update: jest.fn(),
             },
             $transaction: jest.fn((cb) =>
               cb({
@@ -213,6 +214,41 @@ describe('TeachersService', () => {
       await expect(
         service.getStudentById('teacher-user-uuid-1', 'invalid-id'),
       ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('updateStudent', () => {
+    it('should successfully update student details including avatarUrl', async () => {
+      jest
+        .spyOn(prisma.teacherProfile, 'findUnique')
+        .mockResolvedValue(mockTeacherProfile as any);
+      jest.spyOn(prisma.student, 'findFirst').mockResolvedValue({
+        id: 's1',
+        primaryTeacherId: 'tp-1',
+      } as any);
+      jest.spyOn(prisma.student, 'update').mockResolvedValue({
+        id: 's1',
+        studentCode: '06201',
+        firstName: 'Divine',
+        lastName: 'Ekubor',
+        gender: Gender.MALE,
+        dateOfBirth: new Date('2014-05-14'),
+        grade: 'Grade 5',
+        room: 'Room 201',
+        avatarUrl:
+          'https://res.cloudinary.com/dexcjehcfive/image/upload/v1/avatar.jpg',
+        updatedAt: new Date(),
+      } as any);
+
+      const result = await service.updateStudent('teacher-user-uuid-1', 's1', {
+        avatarUrl:
+          'https://res.cloudinary.com/dexcjehcfive/image/upload/v1/avatar.jpg',
+      });
+
+      expect(result.message).toContain('updated successfully');
+      expect(result.student.avatarUrl).toBe(
+        'https://res.cloudinary.com/dexcjehcfive/image/upload/v1/avatar.jpg',
+      );
     });
   });
 });

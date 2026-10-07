@@ -8,6 +8,7 @@ import * as argon2 from 'argon2';
 import { PrismaService } from '../database/prisma.service.js';
 import { AccountStatus, Gender, Role } from '../common/enums/index.js';
 import { CreateStudentDto } from './dto/create-student.dto.js';
+import { UpdateStudentDto } from './dto/update-student.dto.js';
 
 @Injectable()
 export class TeachersService {
@@ -91,6 +92,7 @@ export class TeachersService {
           gender,
           grade,
           room,
+          avatarUrl: dto.avatarUrl ?? null,
           accessPinHash,
           primaryTeacherId: teacherProfile.id,
         },
@@ -111,6 +113,7 @@ export class TeachersService {
           dateOfBirth: student.dateOfBirth,
           grade: student.grade,
           room: student.room,
+          avatarUrl: student.avatarUrl,
           schoolName: teacherProfile.schoolName,
           teacherName: teacherProfile.fullName,
           credentials: {
@@ -236,6 +239,65 @@ export class TeachersService {
         isPrimaryContact: link.isPrimaryContact,
       })),
       createdAt: student.createdAt,
+    };
+  }
+
+  async updateStudent(
+    teacherUserId: string,
+    studentId: string,
+    dto: UpdateStudentDto,
+  ) {
+    const teacherProfile = await this.prisma.teacherProfile.findUnique({
+      where: { userId: teacherUserId },
+    });
+
+    if (!teacherProfile) {
+      throw new NotFoundException(
+        'Teacher profile not found for authenticated user',
+      );
+    }
+
+    const student = await this.prisma.student.findFirst({
+      where: {
+        id: studentId,
+        primaryTeacherId: teacherProfile.id,
+      },
+    });
+
+    if (!student) {
+      throw new NotFoundException(
+        `Student with ID '${studentId}' not found in your classroom roster`,
+      );
+    }
+
+    const updated = await this.prisma.student.update({
+      where: { id: studentId },
+      data: {
+        ...(dto.firstName && { firstName: dto.firstName }),
+        ...(dto.lastName && { lastName: dto.lastName }),
+        ...(dto.gender && { gender: dto.gender }),
+        ...(dto.grade && { grade: dto.grade }),
+        ...(dto.room && { room: dto.room }),
+        ...(dto.dateOfBirth && { dateOfBirth: new Date(dto.dateOfBirth) }),
+        ...(dto.avatarUrl !== undefined && { avatarUrl: dto.avatarUrl }),
+      },
+    });
+
+    return {
+      message: 'Student updated successfully',
+      student: {
+        id: updated.id,
+        studentCode: updated.studentCode,
+        fullName: `${updated.firstName} ${updated.lastName}`,
+        firstName: updated.firstName,
+        lastName: updated.lastName,
+        gender: updated.gender,
+        dateOfBirth: updated.dateOfBirth,
+        grade: updated.grade,
+        room: updated.room,
+        avatarUrl: updated.avatarUrl,
+        updatedAt: updated.updatedAt,
+      },
     };
   }
 }

@@ -12,14 +12,18 @@ async function runMigration() {
   await client.connect();
   console.log('Connected to Neon PostgreSQL DB.');
 
-  console.log('1. Altering users table (adding termsAccepted, termsAcceptedAt)...');
+  console.log(
+    '1. Altering users table (adding termsAccepted, termsAcceptedAt)...',
+  );
   await client.query(`
     ALTER TABLE "users" 
     ADD COLUMN IF NOT EXISTS "termsAccepted" BOOLEAN NOT NULL DEFAULT true,
     ADD COLUMN IF NOT EXISTS "termsAcceptedAt" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP;
   `);
 
-  console.log('2. Altering parent_profiles table (adding schoolName, studentCode)...');
+  console.log(
+    '2. Altering parent_profiles table (adding schoolName, studentCode)...',
+  );
   await client.query(`
     ALTER TABLE "parent_profiles" 
     ADD COLUMN IF NOT EXISTS "schoolName" TEXT NOT NULL DEFAULT '',
